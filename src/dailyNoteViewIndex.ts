@@ -47,7 +47,7 @@ export default class DailyNoteViewPlugin extends Plugin {
         this.lastCheckedDay = moment().format("YYYY-MM-DD");
 
         // Register the up and down navigation extension
-        this.settings.useArrowUpOrDownToNavigate &&
+        if (this.settings.useArrowUpOrDownToNavigate) {
             this.registerEditorExtension([
                 createUpDownNavigationExtension({
                     app: this.app,
@@ -55,6 +55,7 @@ export default class DailyNoteViewPlugin extends Plugin {
                 }),
                 // setActiveEditorExt({ app: this.app, plugin: this }),
             ]);
+        }
 
         this.registerView(
             DAILY_NOTE_VIEW_TYPE,

@@ -26,3 +26,5 @@ data.json
 *.rar
 *.zip
 *.7z
+
+dist

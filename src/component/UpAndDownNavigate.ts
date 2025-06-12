@@ -12,7 +12,7 @@ import { Extension, Prec } from "@codemirror/state";
 import { isDailyNoteLeaf } from "../leafView";
 import DailyNoteViewPlugin from "src/dailyNoteViewIndex";
 
-export interface UpAndDownNavigateOptions {
+export interface DailyNotesUpAndDownNavigateOptions {
     app: App;
     plugin: DailyNoteViewPlugin;
 }
@@ -197,7 +197,7 @@ function isAtFirstVisibleLine(
  * Create the up and down navigation extension for CodeMirror
  */
 export function createUpDownNavigationExtension(
-    options: UpAndDownNavigateOptions
+    options: DailyNotesUpAndDownNavigateOptions
 ): Extension {
     const { app, plugin } = options;
 
