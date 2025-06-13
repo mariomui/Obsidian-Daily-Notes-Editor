@@ -51,7 +51,14 @@ export default defineConfig([
         rules: {
             "no-unused-vars": "off",
             "no-undef": "warn",
-            quotes: ["error", "double"],
+            quotes: [
+                "error",
+                "double",
+                {
+                    avoidEscape: true,
+                    allowTemplateLiterals: true,
+                },
+            ],
             "@typescript-eslint/no-unused-vars": [
                 "error",
                 {
@@ -67,9 +74,7 @@ export default defineConfig([
         },
     },
     {
-        files: ["**/*.svelte"], //errors out on **/*.svelte
-        // https://github.com/sveltejs/eslint-plugin-svelte3/issues/58
-
+        files: ["**/*.svelte"],
         languageOptions: {
             parser: parser,
             globals: {

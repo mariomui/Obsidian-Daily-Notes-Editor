@@ -1,4 +1,4 @@
-import DailyNoteViewPlugin from "./dailyNoteViewIndex";
+import DailyNoteViewPlugin from './dailyNoteViewIndex';
 import {
     WorkspaceLeaf,
     ItemView,
@@ -9,9 +9,9 @@ import {
     Modal,
     App,
     ButtonComponent,
-} from "obsidian";
-import { TimeRange, TimeField } from "./types/time";
-import DailyNoteEditorView from "./component/DailyNoteEditorView.svelte";
+} from 'obsidian';
+import { TimeRange, TimeField } from './types/time';
+import DailyNoteEditorView from './component/DailyNoteEditorView.svelte';
 export const DAILY_NOTE_VIEW_TYPE = "daily-note-editor-view";
 
 export function isEmebeddedLeaf(leaf: WorkspaceLeaf) {

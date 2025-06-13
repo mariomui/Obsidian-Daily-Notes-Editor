@@ -1,4 +1,4 @@
-import { TFile, moment, App } from "obsidian";
+import { TFile, moment, App } from 'obsidian';
 import {
     getAllDailyNotes,
     getDailyNote,
@@ -6,8 +6,8 @@ import {
     getDateFromFile,
     getDailyNoteSettings,
     DEFAULT_DAILY_NOTE_FORMAT,
-} from "obsidian-daily-notes-interface";
-import { TimeRange, TimeField } from "../types/time";
+} from 'obsidian-daily-notes-interface';
+import { TimeRange, TimeField } from '../types/time';
 
 export interface FileManagerOptions {
     mode: "daily" | "folder" | "tag";

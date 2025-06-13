@@ -18,10 +18,10 @@ import {
     WorkspaceLeaf,
     WorkspaceSplit,
     WorkspaceTabs,
-} from "obsidian";
+} from 'obsidian';
 
-import type DailyNoteViewPlugin from "./dailyNoteViewIndex";
-import { genId } from "./utils/utils";
+import type DailyNoteViewPlugin from './dailyNoteViewIndex';
+import { genId } from './utils/utils';
 
 
 export interface DailyNoteEditorParent {

@@ -9,26 +9,18 @@ import {
     moment,
     requireApiVersion,
     TFolder,
-} from "obsidian";
+} from 'obsidian';
 
-import { around } from "monkey-around";
-import { DailyNoteEditor, isDailyNoteLeaf } from "./leafView";
-import "./style/index.css";
-import { addIconList } from "./utils/icon";
-import {
-    DailyNoteSettings,
-    DailyNoteSettingTab,
-    DEFAULT_SETTINGS,
-} from "./dailyNoteSettings";
-import { TimeField } from "./types/time";
-import {
-    getAllDailyNotes,
-    getDailyNote,
-    createDailyNote,
-} from "obsidian-daily-notes-interface";
-import { createUpDownNavigationExtension } from "./component/UpAndDownNavigate";
+import { around } from 'monkey-around';
+import { DailyNoteEditor, isDailyNoteLeaf } from './leafView';
+import './style/index.css';
+import { addIconList } from './utils/icon';
+import { DailyNoteSettings, DailyNoteSettingTab, DEFAULT_SETTINGS } from './dailyNoteSettings';
+import { TimeField } from './types/time';
+import { getAllDailyNotes, getDailyNote, createDailyNote } from 'obsidian-daily-notes-interface';
+import { createUpDownNavigationExtension } from './component/UpAndDownNavigate';
 // import { setActiveEditorExt } from "./component/SetActiveEditor";
-import { DAILY_NOTE_VIEW_TYPE, DailyNoteView } from "./dailyNoteView";
+import { DAILY_NOTE_VIEW_TYPE, DailyNoteView } from './dailyNoteView';
 
 export default class DailyNoteViewPlugin extends Plugin {
     private view: DailyNoteView;
@@ -175,7 +167,7 @@ export default class DailyNoteViewPlugin extends Plugin {
         let layoutChanging = false;
         const uninstaller = around(Workspace.prototype, {
             getActiveViewOfType: (next: any) =>
-                function (t: any) {
+                (function(t: any) {
                     const result = next.call(this, t);
                     if (!result) {
                         if (t?.VIEW_TYPE === "markdown") {
@@ -188,7 +180,7 @@ export default class DailyNoteViewPlugin extends Plugin {
                         }
                     }
                     return result;
-                },
+                }),
             changeLayout(old) {
                 return async function (workspace: unknown) {
                     layoutChanging = true;
@@ -237,7 +229,7 @@ export default class DailyNoteViewPlugin extends Plugin {
                 };
             },
             setActiveLeaf: (next: any) =>
-                function (e: WorkspaceLeaf, t?: any) {
+                (function(e: WorkspaceLeaf, t?: any) {
                     if ((e as any).parentLeaf) {
                         (e as any).parentLeaf.activeTime = 1700000000000;
 
@@ -249,7 +241,7 @@ export default class DailyNoteViewPlugin extends Plugin {
                         return;
                     }
                     return next.call(this, e, t);
-                },
+                }),
         });
         this.register(uninstaller);
     }

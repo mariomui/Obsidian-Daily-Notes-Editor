@@ -4,7 +4,8 @@
     "description": "A plugin for you to edit a bunch of daily notes in one page(inline), which works similar to Roam Research's default daily note view.",
     "main": "main.js",
     "scripts": {
-        "flint": "npx eslint --config eslint.config.mjs --fix .",
+        "flint": "npx eslint --config eslint.config.mjs --fix . && npm run flintq",
+        "flintq": "npx jscodeshift -t ./codemods/single-quote-import.ts src --parser=ts",
         "lint": "npx eslint --fix --ext .ts,.svelte .",
         "dev": "npm run flint && vite build --watch --mode development",
         "build": "npx svelte-check && vite build --mode production",

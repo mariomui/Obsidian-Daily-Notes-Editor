@@ -1,5 +1,5 @@
-import "obsidian";
-import { Plugin, SuggestModal, TFile, View, WorkspaceLeaf } from "obsidian";
+import 'obsidian';
+import { Plugin, SuggestModal, TFile, View, WorkspaceLeaf } from 'obsidian';
 
 interface InternalPlugins {
     switcher: QuickSwitcherPlugin;
