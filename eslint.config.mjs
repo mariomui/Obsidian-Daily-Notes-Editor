@@ -41,8 +41,8 @@ export default defineConfig([
             },
 
             parser: tsParser,
-            ecmaVersion: 5,
-            sourceType: "commonjs",
+            ecmaVersion: 8,
+            sourceType: "module",
 
             parserOptions: {
                 parser: "@typescript-eslint/parser",
@@ -68,7 +68,8 @@ export default defineConfig([
         },
     },
     {
-        files: ["**/*.svelte"],
+        files: ["*.svelte"], //errors out on **/*.svelte
+        // https://github.com/sveltejs/eslint-plugin-svelte3/issues/58
 
         languageOptions: {
             parser: parser,
