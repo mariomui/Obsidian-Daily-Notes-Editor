@@ -1,53 +1,39 @@
 import path from "node:path";
-import {
+import type {
     BuildOptions,
     ConfigEnv,
     Rollup,
     UserConfig,
-    UserConfigFn,
     UserConfigFnObject,
     defineConfig,
-    mergeConfig,
 } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import autoPreprocess from "svelte-preprocess";
 import terser from "@rollup/plugin-terser";
 import replace from "@rollup/plugin-replace";
 import resolve from "@rollup/plugin-node-resolve";
+import { Pipe } from "./rollphidian";
 
 // const prod = process.argv[4] === "production";
-interface Pipe {
-    userConfig: UserConfig;
-    _apply: (userConfig: UserConfig) => Pipe;
-}
 
-function Pipe(userConfig: UserConfig) {
-    this.userConfig = userConfig;
-}
-interface PipeConstructor {
-    new (fig: UserConfig): Pipe;
-}
-Pipe.prototype._apply = function _apply(userConfigFn: UserConfigFn): Pipe {
-    userConfigFn(this.userConfig);
-    return this;
-};
-Pipe.prototype.withRollupBuildPlugins = function withRollupBuildPlugins(
-    plugins: Rollup.Plugin[]
-) {
-    this._apply((userConfig: UserConfig) => {
-        if (!userConfig.build?.rollupOptions?.plugins) {
-            setNested(userConfig, "build.rollupOptions.plugins", []);
-        }
-        if (Array.isArray(userConfig.build?.rollupOptions?.plugins)) {
-            userConfig.build!.rollupOptions!.plugins!.push(...plugins);
-        }
-        return this;
-    });
-};
+const makeFig: UserConfigFnObject = wrapFigVite({
+    externalRollupPlugins: { manuCompressionPlugin },
+    helperFuncs: {
+        Pipe,
+        plugin1,
+    },
+});
+const viteFig = defineConfig(makeFig);
 
-function wrapFigVite({ externalRollupPlugins }): UserConfigFnObject {
+export default viteFig;
+// WRAPPER to keep track of dependencies
+function wrapFigVite({
+    externalRollupPlugins,
+    helperFuncs,
+}): UserConfigFnObject {
     // # external tools;
     const { manuCompressionPlugin } = externalRollupPlugins;
+    const { Pipe, plugin1 } = helperFuncs;
 
     return function (configEnv: ConfigEnv): UserConfig {
         const entry = path.resolve(__dirname, "./src/dailyNoteViewIndex.ts");
@@ -69,17 +55,7 @@ function wrapFigVite({ externalRollupPlugins }): UserConfigFnObject {
             },
             rollupOptions: {
                 plugins: [
-                    manuCompressionPlugin(mode),
-                    resolve({
-                        browser: false,
-                    }),
-                    replace({
-                        preventAssignment: true,
-                        "process.env.NODE_ENV": JSON.stringify(
-                            process.env.NODE_ENV
-                        ),
-                    }),
-                    ...externalRollupPlugins,
+                    // manuCompressionPlugin(mode),
                 ],
                 output: {
                     // Overwrite default Vite output fileName
@@ -110,18 +86,21 @@ function wrapFigVite({ externalRollupPlugins }): UserConfigFnObject {
         const userConfig = { plugins, build: buildFig };
         const fig = new Pipe(userConfig).withRollupBuildPlugins([
             manuCompressionPlugin(mode),
+            resolve({
+                browser: false,
+            }),
+            replace({
+                preventAssignment: true,
+                "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV),
+            }),
+            plugin1(),
         ]);
+
         return fig.userConfig;
     };
 }
 
-const makeFig: UserConfigFnObject = wrapFigVite({
-    externalRollupPlugins: { manuCompressionPlugin },
-});
-const viteFig = defineConfig(makeFig);
-
-export default viteFig;
-
+// # Plugins
 function manuCompressionPlugin(mode) {
     const terserFig = terser({
         compress: {
@@ -145,26 +124,6 @@ function manuCompressionPlugin(mode) {
     }
     return "";
 }
-function setupViteFig(externaPlugins, externalHelperFuncs) {
-    return {
-        // This is the default config for Vite, you can modify it as needed
-        root: path.resolve(__dirname, "./src"),
-        resolve: {
-            alias: {
-                "@": path.resolve(__dirname, "./src"),
-            },
-        },
-        server: {
-            port: 3000,
-            strictPort: true,
-            open: true,
-        },
-        build: {
-            outDir: path.resolve(__dirname, "./dist"),
-            emptyOutDir: true,
-        },
-    };
-}
 function plugin1(): Rollup.Plugin {
     return {
         name: "plugin1",
@@ -173,14 +132,24 @@ function plugin1(): Rollup.Plugin {
         },
     };
 }
-function setNested(obj, path, value) {
-    const keys = path.split(".");
-    let current = obj;
 
-    keys.slice(0, -1).forEach((key) => {
-        if (!(key in current)) current[key] = {};
-        current = current[key];
-    });
-
-    current[keys[keys.length - 1]] = value;
-}
+// function setupViteFig() {
+//     return {
+//         // This is the default config for Vite, you can modify it as needed
+//         root: path.resolve(__dirname, "./src"),
+//         resolve: {
+//             alias: {
+//                 "@": path.resolve(__dirname, "./src"),
+//             },
+//         },
+//         server: {
+//             port: 3000,
+//             strictPort: true,
+//             open: true,
+//         },
+//         build: {
+//             outDir: path.resolve(__dirname, "./dist"),
+//             emptyOutDir: true,
+//         },
+//     };
+// }

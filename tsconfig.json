@@ -2,7 +2,7 @@
     "compilerOptions": {
         "allowSyntheticDefaultImports": true,
         "baseUrl": ".",
-        "inlineSourceMap": true,
+        // "inlineSourceMap": true,
         "inlineSources": true,
         "module": "ESNext",
         "target": "ES6",
@@ -22,11 +22,16 @@
             "node"
         ]
     },
-    //	"extends": "@tsconfig/svelte/tsconfig.json",
+    "extends": "@tsconfig/svelte/tsconfig.json",
     "include": [
         "**/globals.d.ts",
         "**/*.js",
         "**/*.svelte",
         "**/*.ts"
+    ],
+    "exclude": [
+        "tests",
+        "**/*.spec.ts",
+        "**/*.test.ts"
     ]
 }

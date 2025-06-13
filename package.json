@@ -4,12 +4,13 @@
     "description": "A plugin for you to edit a bunch of daily notes in one page(inline), which works similar to Roam Research's default daily note view.",
     "main": "main.js",
     "scripts": {
-        "lint": "npx eslint --fix --ext .ts,.svelte .",
-        "dev": "npm run lint && vite build --watch --mode development",
-        "build": "npx svelte-check && vite build --mode production",
+        "lint": "pnpx eslint --fix --ext .ts,.svelte .",
+        "dev": "pnpm lint && vite build --watch --mode development",
+        "build": "pnpx svelte-check && vite build --mode production",
         "version": "node version-bump.mjs && git add manifest.json versions.json",
-        "test": "vitest"
+        "test": "vitest --watch"
     },
+    "type": "module",
     "keywords": [],
     "author": "Quorafind",
     "devDependencies": {
@@ -17,7 +18,7 @@
         "@rollup/plugin-node-resolve": "^15.2.3",
         "@rollup/plugin-replace": "^5.0.5",
         "@rollup/plugin-terser": "^0.4.4",
-        "@sveltejs/vite-plugin-svelte": "^3.1.0",
+        "@sveltejs/vite-plugin-svelte": "^5.1.0",
         "@tsconfig/svelte": "^5.0.4",
         "@types/node": "^20.12.7",
         "@typescript-eslint/eslint-plugin": "8.34.0",
@@ -29,6 +30,7 @@
         "globals": "^16.2.0",
         "obsidian": "^1.8.7",
         "obsidian-daily-notes-interface": "^0.9.4",
+        "rollup": "^4.43.0",
         "svelte": "^4.2.15",
         "svelte-check": "3.7.1",
         "svelte-eslint-parser": "^0.35.0",
