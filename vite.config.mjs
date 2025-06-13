@@ -1,12 +1,12 @@
-import path from "path";
-import { defineConfig } from "vite";
-import { svelte } from "@sveltejs/vite-plugin-svelte";
-import autoPreprocess from "svelte-preprocess";
-import terser from "@rollup/plugin-terser";
-import replace from "@rollup/plugin-replace";
-import resolve from "@rollup/plugin-node-resolve";
+import path from 'path';
+import resolve from '@rollup/plugin-node-resolve';
+import replace from '@rollup/plugin-replace';
+import terser from '@rollup/plugin-terser';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+import autoPreprocess from 'svelte-preprocess';
+import { defineConfig } from 'vite';
 
-const prod = process.argv[4] === "production";
+// const prod = process.argv[4] === "production";
 
 export default defineConfig(({ mode }) => {
     return {
