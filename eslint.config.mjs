@@ -25,9 +25,9 @@ export default defineConfig([
         files: ["**/*.ts"],
         extends: compat.extends(
             "eslint:recommended",
-            "plugin:@typescript-eslint/eslint-recommended"
+            "plugin:@typescript-eslint/eslint-recommended",
             // "plugin:@typescript-eslint/recommended" // getscope api error, <-- something in here isn't updated
-            // "plugin:svelte/recommended" // <--inner decorations error
+            "plugin:svelte/recommended" // <--inner decorations error
         ),
 
         plugins: {
@@ -68,7 +68,7 @@ export default defineConfig([
         },
     },
     {
-        files: ["*.svelte"], //errors out on **/*.svelte
+        files: ["**/*.svelte"], //errors out on **/*.svelte
         // https://github.com/sveltejs/eslint-plugin-svelte3/issues/58
 
         languageOptions: {
@@ -76,6 +76,11 @@ export default defineConfig([
             globals: {
                 ...globals.node,
                 ...globals.browser,
+            },
+            parserOptions: {
+                parser: tsParser,
+                project: "./tsconfig.json",
+                extraFileExtensions: [".svelte"],
             },
         },
     },
