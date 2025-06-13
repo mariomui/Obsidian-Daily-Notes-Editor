@@ -212,7 +212,7 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
 
     setInitialDimensions() {
 
-        this.hoverEl.style.height = 'auto';
+        this.hoverEl.style.height = "auto";
         this.hoverEl.style.width = "100%";
     }
 
