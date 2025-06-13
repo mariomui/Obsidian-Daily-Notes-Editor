@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import js from "@eslint/js/src/index.js";
 import { FlatCompat } from "@eslint/eslintrc";
 import { createRequire } from "node:module";
+import importEslint from "eslint-plugin-import";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,6 +32,7 @@ export default defineConfig([
         ),
 
         plugins: {
+            "eslint-import-plugin": importEslint,
             "@typescript-eslint": typescriptEslint,
         },
 
@@ -57,6 +59,16 @@ export default defineConfig([
                 {
                     avoidEscape: true,
                     allowTemplateLiterals: true,
+                },
+            ],
+            "eslint-import-plugin/newline-after-import": ["warn", { count: 2 }],
+            "eslint-import-plugin/order": [
+                "warn",
+                {
+                    alphabetize: {
+                        order: "asc",
+                        caseInsensitive: true,
+                    },
                 },
             ],
             "@typescript-eslint/no-unused-vars": [
