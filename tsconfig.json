@@ -22,10 +22,13 @@
         ]
     },
     //	"extends": "@tsconfig/svelte/tsconfig.json",
+    "types": [
+        "node", "obsidian"
+    ],
     "include": [
         "**/globals.d.ts",
         "**/*.js",
         "**/*.svelte",
-        "**/*.ts"
+        "**/*.ts", 
     ]
 }
