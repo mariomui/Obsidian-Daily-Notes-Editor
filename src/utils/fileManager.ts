@@ -9,6 +9,7 @@ import {
 } from 'obsidian-daily-notes-interface';
 import { TimeRange, TimeField } from '../types/time';
 
+
 export interface FileManagerOptions {
     mode: "daily" | "folder" | "tag";
     target?: string;

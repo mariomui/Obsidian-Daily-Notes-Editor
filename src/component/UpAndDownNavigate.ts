@@ -1,3 +1,5 @@
+import { Extension, Prec } from '@codemirror/state';
+import { EditorView, KeyBinding, keymap } from '@codemirror/view';
 import {
     App,
     Editor,
@@ -7,10 +9,9 @@ import {
     TFile,
     WorkspaceLeaf,
 } from 'obsidian';
-import { EditorView, KeyBinding, keymap } from '@codemirror/view';
-import { Extension, Prec } from '@codemirror/state';
-import { isDailyNoteLeaf } from '../leafView';
 import DailyNoteViewPlugin from 'src/dailyNoteViewIndex';
+import { isDailyNoteLeaf } from '../leafView';
+
 
 export interface UpAndDownNavigateOptions {
     app: App;
