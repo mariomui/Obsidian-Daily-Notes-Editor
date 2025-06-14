@@ -1,14 +1,40 @@
-import path from 'path';
-import resolve from '@rollup/plugin-node-resolve';
-import replace from '@rollup/plugin-replace';
-import terser from '@rollup/plugin-terser';
-import { svelte } from '@sveltejs/vite-plugin-svelte';
-import autoPreprocess from 'svelte-preprocess';
-import { defineConfig } from 'vite';
+import path from "node:path";
+import resolve from "@rollup/plugin-node-resolve";
+import replace from "@rollup/plugin-replace";
+import terser from "@rollup/plugin-terser";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
+import autoPreprocess from "svelte-preprocess";
+import { defineConfig } from "vite";
+import type { ConfigEnv, Rollup, UserConfig } from "vite";
 
 // const prod = process.argv[4] === "production";
 
-export default defineConfig(({ mode }) => {
+function manuTerserPlugin(mode): Rollup.Plugin {
+    if (mode === "development") {
+        return {
+            name: "no compression",
+        };
+    }
+    return terser({
+        compress: {
+            defaults: false,
+            drop_console: ["log", "info"],
+        },
+        mangle: {
+            eval: true,
+            module: true,
+            toplevel: true,
+            safari10: true,
+            properties: false,
+        },
+        output: {
+            comments: false,
+            ecma: 2020,
+        },
+    });
+}
+function foo(configEnv: ConfigEnv): UserConfig {
+    const { mode } = configEnv;
     return {
         plugins: [
             svelte({
@@ -25,25 +51,7 @@ export default defineConfig(({ mode }) => {
             },
             rollupOptions: {
                 plugins: [
-                    mode === "development"
-                        ? ""
-                        : terser({
-                              compress: {
-                                  defaults: false,
-                                  drop_console: ["log", "info"],
-                              },
-                              mangle: {
-                                  eval: true,
-                                  module: true,
-                                  toplevel: true,
-                                  safari10: true,
-                                  properties: false,
-                              },
-                              output: {
-                                  comments: false,
-                                  ecma: "2020",
-                              },
-                          }),
+                    manuTerserPlugin(mode),
                     resolve({
                         browser: false,
                     }),
@@ -80,4 +88,5 @@ export default defineConfig(({ mode }) => {
             outDir: "dist",
         },
     };
-});
+}
+export default defineConfig(foo);
