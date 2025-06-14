@@ -5,44 +5,25 @@ import resolve from "@rollup/plugin-node-resolve";
 import replace from "@rollup/plugin-replace";
 import terser from "@rollup/plugin-terser";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import chalk from "chalk";
 import copyNewer from "copy-newer";
 import { ensureFile, pathExists, move } from "fs-extra";
 import autoPreprocess from "svelte-preprocess";
-import type { ConfigEnv, Rollup, UserConfig } from "vite";
+import { ConfigEnv, Rollup, UserConfig } from "vite";
 import { defineConfig } from "vite";
 import type { PipeConstructor } from "./rollphidian";
 import { Pipe } from "./rollphidian";
+import { RollupLogger } from "./utils/RollupLogger";
 
 // const prod = process.argv[4] === "production";
-
-function manuTerserPlugin(mode): Rollup.Plugin {
-    if (mode === "development") {
-        return {
-            name: "no compression",
-        };
-    }
-    return terser({
-        compress: {
-            defaults: false,
-            drop_console: ["log", "info"],
-        },
-        mangle: {
-            eval: true,
-            module: true,
-            toplevel: true,
-            safari10: true,
-            properties: false,
-        },
-        output: {
-            comments: false,
-            ecma: 2020,
-        },
-    });
-}
-
+const rollupLogger = new RollupLogger(chalk);
 function manuViteFig(configEnv: ConfigEnv): UserConfig {
+    // # CONSTS
     const { mode } = configEnv;
     const Piper = Pipe as unknown as PipeConstructor;
+
+    // # KNOBS
+    const dist = "dist";
 
     const _userFig: UserConfig = {
         plugins: [
@@ -50,6 +31,7 @@ function manuViteFig(configEnv: ConfigEnv): UserConfig {
                 preprocess: autoPreprocess(),
             }),
         ],
+        resolve: {},
         build: {
             sourcemap: mode === "development" ? "inline" : false,
             minify: mode !== "development",
@@ -95,13 +77,12 @@ function manuViteFig(configEnv: ConfigEnv): UserConfig {
             },
             // Use root as the output dir
             emptyOutDir: false,
-            outDir: "dist",
+            outDir: dist,
         },
     };
     // Use this to interface with rollup plugins because the ophidian paradigm is easier to dev with
     if (mode === "development") {
-        // development dist;
-        const dist = "./dist";
+        // grab the plugin name;
         const { id } = require("./manifest.dev.json");
 
         let outDir = _userFig.build?.outDir || dist;
@@ -128,21 +109,76 @@ function manuViteFig(configEnv: ConfigEnv): UserConfig {
 
 export default defineConfig(manuViteFig);
 
-function RenameFilePlugin(location, oldname, new_name) {
-    return {
-        name: "plugin:renameFileAfterBuildFinale",
-        closeBundle: {
-            enforce: "post",
-            // sequential: true,
-            handler: async () => {
-                const old_path = pathresolve(location, oldname);
-                const new_path = pathresolve(location, new_name);
+// # ROLLUP PLUGINS
 
+/**
+ * Returns a Rollup plugin for code minification using Terser, or a no-op plugin in development mode.
+ *
+ * @param mode - The current build mode, typically "development" or "production".
+ * @returns A Rollup plugin instance configured for the specified mode.
+ */
+function manuTerserPlugin(
+    mode: string | "development" | "production"
+): Rollup.Plugin {
+    if (mode === "development") {
+        return {
+            name: "no compression",
+        };
+    }
+    return terser({
+        compress: {
+            defaults: false,
+            drop_console: ["log", "info"],
+        },
+        mangle: {
+            eval: true,
+            module: true,
+            toplevel: true,
+            safari10: true,
+            properties: false,
+        },
+        output: {
+            comments: false,
+            ecma: 2020,
+        },
+    });
+}
+
+/**
+ * Vite plugin to rename a file after the build process completes.
+ *
+ * @param location - The directory containing the file to rename.
+ * @param oldname - The current filename.
+ * @param new_name - The new filename to rename to.
+ * @returns A Vite plugin object that renames the specified file after the bundle is closed.
+ */
+function RenameFilePlugin(location, oldname, new_name): Rollup.Plugin {
+    const plugin_name = "renameFileAfterBuildFinale";
+    const old_path = pathresolve(location, oldname);
+    const new_path = pathresolve(location, new_name);
+
+    const progressFig = rollupLogger.progress(
+        `Renaming ${oldname} to ${new_name}`
+    );
+    const successFig = rollupLogger.success(`Renamed to: ${new_path} `);
+
+    return {
+        name: plugin_name,
+        closeBundle: {
+            // sequential: true,
+            handler: async function () {
                 // early escape if file doesn't exists;
                 const isPathExists = await pathExists(old_path);
+
                 if (!isPathExists) return;
 
-                await move(old_path, new_path, { overwrite: true });
+                this.info(progressFig);
+
+                await move(old_path, new_path, { overwrite: true }).catch(
+                    (err) => this.warn(rollupLogger.fail(err))
+                );
+
+                this.info(successFig);
             },
         },
     };
@@ -162,15 +198,19 @@ function CopyManifestToDistPlugin(
     destDir = "./dist",
     pattern = "manifest.dev.json"
 ): Rollup.Plugin {
+    const successFig = rollupLogger.success(
+        `Files matching ${pattern} copied to ${destDir}`
+    );
     return {
         name: "plugin:copy-manifest-to-dist",
         closeBundle: {
             sequential: true,
-            handler: async () => {
+            handler: async function () {
                 await copyNewer(pattern, destDir, {
                     verbose: true,
                     cwd: ".", // grab manifest files from current root directory
                 });
+                this.info(successFig);
             },
         },
     };
@@ -216,18 +256,26 @@ function MoveArtifactsUsingPlugin(
     fromDir: string,
     toDir: string
 ): Rollup.Plugin {
+    const progressFig = rollupLogger.progress(
+        `Artifacts moving from ${fromDir} to ${toDir}`
+    );
+    const successFig = rollupLogger.success(
+        `Artifacts Successfully moved from ${fromDir} to ${toDir}`
+    );
     return {
         name: "plugin:move-artifacts",
         closeBundle: {
             order: "post",
             sequential: true,
-            handler: async () => {
+            handler: async function () {
                 const pattern = "{main.js,styles.css,manifest.*.json}";
                 const copyNewerFig = {
                     // opts.cwd: string - Same as glob's. The current working directory in which to search. Defaults to process.cwd(). (Included here because you'll most likely need it.) aka this is where your dist file is located;
                     verbose: true,
                     cwd: fromDir,
                 };
+                this.info(progressFig);
+
                 await copyNewer(
                     // pattern: array|string - One or more glob patterns to select for the files to copy.
                     pattern,
@@ -235,6 +283,7 @@ function MoveArtifactsUsingPlugin(
                     toDir,
                     copyNewerFig
                 ).catch(console.log);
+                this.info(successFig);
             },
         },
     };

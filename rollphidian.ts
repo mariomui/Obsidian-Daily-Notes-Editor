@@ -1,6 +1,5 @@
 import type { Rollup, UserConfig, UserConfigFn } from "vite";
 
-
 interface Pipe {
     userConfig: UserConfig;
     _apply: (userConfig: UserConfig) => Pipe;
@@ -25,12 +24,31 @@ Pipe.prototype.withRollupBuildPlugins = function withRollupBuildPlugins(
             setNested(userConfig, "build.rollupOptions.plugins", []);
         }
         if (Array.isArray(userConfig.build?.rollupOptions?.plugins)) {
-            userConfig.build!.rollupOptions!.plugins!.push(...plugins);
+            const _plugins = plugins.reduce((chain, plugin: Rollup.Plugin) => {
+                chain.push(plugin, logRollupPlugin(plugin.name));
+                return chain;
+            }, [] as Rollup.Plugin[]);
+            userConfig.build!.rollupOptions!.plugins!.push(..._plugins);
         }
         return this;
     });
     return this;
 };
+
+function logRollupPlugin(
+    plugin_name: string,
+    shouldSilent: boolean = false
+): Rollup.Plugin {
+    return {
+        name: `plugin:${plugin_name}-logger`,
+        onLog(level, log) {
+            if (log.plugin === "plugin_name") {
+                this.info(log);
+            }
+            return shouldSilent == false;
+        },
+    };
+}
 
 // # Utils
 export function setNested(obj, crumbs, value, recurseOutValue = 10) {

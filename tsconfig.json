@@ -20,7 +20,12 @@
         ],
         "types": [
             "node"
-        ]
+        ],
+        "paths": {
+            "utils/*": [
+                "utils/*"
+            ]
+        },
     },
     //	"extends": "@tsconfig/svelte/tsconfig.json",
     "types": [
