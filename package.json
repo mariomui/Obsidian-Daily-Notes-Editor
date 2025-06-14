@@ -10,7 +10,8 @@
         "lint": "npx eslint --fix --ext .ts,.svelte .",
         "dev": "npm run flint && vite build --watch --mode development",
         "build": "npx svelte-check && vite build --mode production",
-        "version": "node version-bump.mjs && git add manifest.json versions.json"
+        "version": "node version-bump.mjs && git add manifest.json versions.json",
+        "test": "vitest"
     },
     "type": "module",
     "keywords": [],
