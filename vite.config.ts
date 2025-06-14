@@ -1,15 +1,15 @@
-import path from 'node:path';
-import resolve from '@rollup/plugin-node-resolve';
-import replace from '@rollup/plugin-replace';
-import terser from '@rollup/plugin-terser';
-import { svelte } from '@sveltejs/vite-plugin-svelte';
-import copyNewer from 'copy-newer';
-import autoPreprocess from 'svelte-preprocess';
-import { defineConfig } from 'vite';
-import type { ConfigEnv, Rollup, UserConfig } from 'vite';
-import { Pipe  } from './rollphidian';
-import type {PipeConstructor} from "./rollphidian";
-
+import path from "node:path";
+import resolve from "@rollup/plugin-node-resolve";
+import replace from "@rollup/plugin-replace";
+import terser from "@rollup/plugin-terser";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
+import copyNewer from "copy-newer";
+import { ensureFile } from "fs-extra";
+import autoPreprocess from "svelte-preprocess";
+import { defineConfig } from "vite";
+import type { ConfigEnv, Rollup, UserConfig } from "vite";
+import { Pipe } from "./rollphidian";
+import type { PipeConstructor } from "./rollphidian";
 // import { dirname, join } from "node:path";
 
 // const prod = process.argv[4] === "production";
@@ -39,12 +39,11 @@ function manuTerserPlugin(mode): Rollup.Plugin {
     });
 }
 
-
 function manuViteFig(configEnv: ConfigEnv): UserConfig {
     const { mode } = configEnv;
     const Piper = Pipe as unknown as PipeConstructor;
 
-    const _userFig:UserConfig = {
+    const _userFig: UserConfig = {
         plugins: [
             svelte({
                 preprocess: autoPreprocess(),
@@ -100,14 +99,15 @@ function manuViteFig(configEnv: ConfigEnv): UserConfig {
     // Use this to interface with rollup plugins because the ophidian paradigm is easier to dev with
     if (mode === "development") {
         const outDir = _userFig.build?.outDir || "./dist";
-        new Piper(_userFig).withRollupBuildPlugins([CopyManifestToDistPip(outDir)])
+        new Piper(_userFig).withRollupBuildPlugins([
+            CopyManifestToDistPlugin(outDir),
+            AddHotReloadPlugin(outDir, true),
+        ]);
     }
     return _userFig;
 }
 
-
 export default defineConfig(manuViteFig);
-
 
 /**
  * Creates a Rollup plugin that copies a manifest file to the specified distribution directory
@@ -119,7 +119,10 @@ export default defineConfig(manuViteFig);
  * @param pattern - The glob pattern or filename of the manifest to copy. Defaults to "manifest.dev.json".
  * @returns A Rollup plugin object that performs the copy operation at the end of the build.
  */
-function CopyManifestToDistPip(destDir = "./dist", pattern = "manifest.dev.json"): Rollup.Plugin {
+function CopyManifestToDistPlugin(
+    destDir = "./dist",
+    pattern = "manifest.dev.json"
+): Rollup.Plugin {
     return {
         name: "plugin:copy-manifest-to-dist",
         buildEnd: async () => {
@@ -130,23 +133,23 @@ function CopyManifestToDistPip(destDir = "./dist", pattern = "manifest.dev.json"
         },
     };
 }
+function AddHotReloadPlugin(
+    destDir,
+    isHotReload: boolean = false
+): Rollup.Plugin {
+    return {
+        name: "hotreload",
+        buildEnd: async () => {
+            if (isHotReload) {
+                await ensureFile(destDir + "/.hotreload");
+            }
+        },
+    };
+}
 
 /* 
 // easy dev plugins
-function AddHotReloadPlugin(isHotReload: boolean = false): Plugin {
-	return {
-		name: "hotreload",
-		setup(build: PluginBuild) {
-			build.onEnd(async () => {
-				if (isHotReload)
-					await ensureFile(
-						dirname(build.initialOptions.outfile || ARTIFACTS_DIR) +
-							"/.hotreload",
-					);
-			});
-		},
-	};
-}
+
 function MoveArtifactsUsingPlugins(ARTIFACTS_DIR: string): Plugin {
 	return {
 		name: "plugin:move-artifacts",
