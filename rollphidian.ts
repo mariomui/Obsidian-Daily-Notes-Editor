@@ -4,14 +4,15 @@ import type { Rollup, UserConfig, UserConfigFn } from 'vite';
 interface Pipe {
     userConfig: UserConfig;
     _apply: (userConfig: UserConfig) => Pipe;
+    withRollupBuildPlugins: (plugins: Rollup.Plugin[]) => Pipe
 }
 
 export function Pipe(this: Pipe, userConfig: UserConfig) {
     this.userConfig = userConfig;
 }
-// interface PipeConstructor {
-//     new (fig: UserConfig): Pipe;
-// }
+export interface PipeConstructor {
+    new (fig: UserConfig): Pipe;
+}
 Pipe.prototype._apply = function _apply(userConfigFn: UserConfigFn): Pipe {
     userConfigFn(this.userConfig);
     return this;
