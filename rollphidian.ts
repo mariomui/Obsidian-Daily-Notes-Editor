@@ -1,5 +1,6 @@
 import type { Rollup, UserConfig, UserConfigFn } from "vite";
 
+
 interface Pipe {
     userConfig: UserConfig;
     _apply: (userConfig: UserConfig) => Pipe;
