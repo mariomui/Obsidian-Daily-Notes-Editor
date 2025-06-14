@@ -99,10 +99,14 @@ function manuViteFig(configEnv: ConfigEnv): UserConfig {
     // Use this to interface with rollup plugins because the ophidian paradigm is easier to dev with
     if (mode === "development") {
         const outDir = _userFig.build?.outDir || "./dist";
-        new Piper(_userFig).withRollupBuildPlugins([
-            CopyManifestToDistPlugin(outDir),
-            AddHotReloadPlugin(outDir, true),
-        ]);
+        new Piper(_userFig)
+            .withRollupBuildPlugins([
+                CopyManifestToDistPlugin(outDir),
+                AddHotReloadPlugin(outDir, true),
+            ])
+            .withRollupBuildPlugins([
+                MoveArtifactsUsingPlugin(outDir, "./destdir"),
+            ]);
     }
     return _userFig;
 }
@@ -147,36 +151,26 @@ function AddHotReloadPlugin(
     };
 }
 
-/* 
-// easy dev plugins
-
-function MoveArtifactsUsingPlugins(ARTIFACTS_DIR: string): Plugin {
-	return {
-		name: "plugin:move-artifacts",
-		setup(build: PluginBuild) {
-			build.onEnd(genCopy);
-			async function genCopy() {
-				// if there is an outdir override the destination dir to copy to.
-				// if there is a outfile, use that outfile to determine the destination directory
-				const destDir =
-					build.initialOptions.outdir ??
-					dirname(build.initialOptions.outfile || ARTIFACTS_DIR);
-
-				const pattern = "{main.js,styles.css,manifest.json}";
-				const copyNewerFig = {
-					// opts.cwd: string - Same as glob's. The current working directory in which to search. Defaults to process.cwd(). (Included here because you'll most likely need it.) aka this is where your dist file is located;
-					verbose: true,
-					cwd: ARTIFACTS_DIR,
-				};
-				await copyNewer(
-					// pattern: array|string - One or more glob patterns to select for the files to copy.
-					pattern,
-					// director to copy to
-					destDir,
-					copyNewerFig,
-				).catch(console.log);
-			}
-		},
-	};
+function MoveArtifactsUsingPlugin(
+    fromDir: string,
+    toDir: string
+): Rollup.Plugin {
+    return {
+        name: "plugin:move-artifacts",
+        closeBundle: async () => {
+            const pattern = "{main.js,styles.css,manifest.*.json}";
+            const copyNewerFig = {
+                // opts.cwd: string - Same as glob's. The current working directory in which to search. Defaults to process.cwd(). (Included here because you'll most likely need it.) aka this is where your dist file is located;
+                verbose: true,
+                cwd: fromDir,
+            };
+            await copyNewer(
+                // pattern: array|string - One or more glob patterns to select for the files to copy.
+                pattern,
+                // director to copy to
+                toDir,
+                copyNewerFig
+            ).catch(console.log);
+        },
+    };
 }
-*/

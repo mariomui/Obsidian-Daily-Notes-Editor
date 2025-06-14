@@ -4,7 +4,7 @@ import type { Rollup, UserConfig, UserConfigFn } from "vite";
 interface Pipe {
     userConfig: UserConfig;
     _apply: (userConfig: UserConfig) => Pipe;
-    withRollupBuildPlugins: (plugins: Rollup.Plugin[]) => Pipe
+    withRollupBuildPlugins: (plugins: Rollup.Plugin[]) => Pipe;
 }
 
 export function Pipe(this: Pipe, userConfig: UserConfig) {
@@ -29,6 +29,7 @@ Pipe.prototype.withRollupBuildPlugins = function withRollupBuildPlugins(
         }
         return this;
     });
+    return this;
 };
 
 // # Utils
