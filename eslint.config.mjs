@@ -10,6 +10,7 @@ import tsParser from "@typescript-eslint/parser";
 import importEslint from "eslint-plugin-import";
 import globals from "globals";
 import parser from "svelte-eslint-parser";
+// import importQuotesRule from "./eslint-plugins/eslint-import-quotes/import-quotes.mjs";
 
 const { defineConfig, globalIgnores } = require("eslint/config");
 
@@ -22,7 +23,13 @@ const compat = new FlatCompat({
 });
 
 export default defineConfig([
-    globalIgnores(["**/npm node_modules", "**/build", "**/*.d.ts"]),
+    globalIgnores([
+        "**/npm node_modules",
+        "**/build",
+        "**/*.d.ts",
+        "**/*.test.ts",
+        "eslint.config.mjs",
+    ]),
     {
         files: ["**/*.mjs", "**/*.ts"],
         extends: compat.extends(
@@ -33,6 +40,7 @@ export default defineConfig([
         ),
 
         plugins: {
+            "import-quotes": importQuotesRule,
             "eslint-import-plugin": importEslint,
             "@typescript-eslint": typescriptEslint,
         },
@@ -54,14 +62,15 @@ export default defineConfig([
         rules: {
             "no-unused-vars": "off",
             "no-undef": "warn",
-            quotes: [
-                "error",
-                "double",
-                {
-                    // avoidEscape: true,
-                    allowTemplateLiterals: true,
-                },
-            ],
+            // quotes: [
+            //     "warn",
+            //     "double",
+            //     {
+            //         avoidEscape: true,
+            //         allowTemplateLiterals: true,
+            //     },
+            // ],
+            // "import-quotes/import-quotes": ["warn", "single"],
             "eslint-import-plugin/newline-after-import": ["warn", { count: 2 }],
             "eslint-import-plugin/order": [
                 "warn",

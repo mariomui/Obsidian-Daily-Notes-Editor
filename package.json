@@ -7,7 +7,7 @@
         "flint": "npx eslint --config eslint.config.mjs --fix . && npm run sleep5s && npm run flintq",
         "sleep5s": "node -e \"setTimeout(() => process.exit(0), 5000)\"",
         "flintq": "pnpm dlx jscodeshift -t ./codemods/single-quote-import.ts src vite.config.mjs eslint.config.mjs --parser=ts",
-        "lint": "npx eslint --fix --ext .ts,.svelte .",
+        "lint": "npx eslint --config eslint.config.mjs --fix --ext .ts,.svelte,.mjs .",
         "dev": "npm run flint && vite build --watch --mode development",
         "build": "npx svelte-check && vite build --mode production",
         "version": "node version-bump.mjs && git add manifest.json versions.json",
