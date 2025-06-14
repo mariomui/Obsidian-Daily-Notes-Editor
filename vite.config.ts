@@ -1,16 +1,17 @@
-import path from "node:path";
+// import { rename } from "node:fs/promises";
+
+import { join, resolve as pathresolve } from "node:path";
 import resolve from "@rollup/plugin-node-resolve";
 import replace from "@rollup/plugin-replace";
 import terser from "@rollup/plugin-terser";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import copyNewer from "copy-newer";
-import { ensureFile } from "fs-extra";
+import { ensureFile, pathExists, move } from "fs-extra";
 import autoPreprocess from "svelte-preprocess";
-import { defineConfig } from "vite";
 import type { ConfigEnv, Rollup, UserConfig } from "vite";
-import { Pipe } from "./rollphidian";
+import { defineConfig } from "vite";
 import type { PipeConstructor } from "./rollphidian";
-// import { dirname, join } from "node:path";
+import { Pipe } from "./rollphidian";
 
 // const prod = process.argv[4] === "production";
 
@@ -54,7 +55,8 @@ function manuViteFig(configEnv: ConfigEnv): UserConfig {
             minify: mode !== "development",
             // Use Vite lib mode https://vitejs.dev/guide/build.html#library-mode
             lib: {
-                entry: path.resolve(__dirname, "./src/dailyNoteViewIndex.ts"),
+                entry: new URL("./src/dailyNoteViewIndex.ts", import.meta.url)
+                    .pathname,
                 formats: ["cjs"],
             },
             rollupOptions: {
@@ -92,26 +94,59 @@ function manuViteFig(configEnv: ConfigEnv): UserConfig {
                 ],
             },
             // Use root as the output dir
-            emptyOutDir: true,
+            emptyOutDir: false,
             outDir: "dist",
         },
     };
     // Use this to interface with rollup plugins because the ophidian paradigm is easier to dev with
     if (mode === "development") {
-        const outDir = _userFig.build?.outDir || "./dist";
+        // development dist;
+        const dist = "./dist";
+        const { id } = require("./manifest.dev.json");
+
+        let outDir = _userFig.build?.outDir || dist;
+        if (process.env.OBSIDIAN_TEST_VAULT) {
+            outDir = join(
+                process.env.OBSIDIAN_TEST_VAULT,
+                ".obsidian",
+                "plugins",
+                id
+            );
+        }
+
         new Piper(_userFig)
+            .withRollupBuildPlugins([CopyManifestToDistPlugin(dist)])
             .withRollupBuildPlugins([
-                CopyManifestToDistPlugin(outDir),
                 AddHotReloadPlugin(outDir, true),
-            ])
-            .withRollupBuildPlugins([
-                MoveArtifactsUsingPlugin(outDir, "./destdir"),
+                MoveArtifactsUsingPlugin(dist, outDir),
+                RenameFilePlugin(outDir, "manifest.dev.json", "manifest.json"),
+                // last one here should not be sequential or else there's a waiting sequence
             ]);
     }
     return _userFig;
 }
 
 export default defineConfig(manuViteFig);
+
+function RenameFilePlugin(location, oldname, new_name) {
+    return {
+        name: "plugin:renameFileAfterBuildFinale",
+        closeBundle: {
+            enforce: "post",
+            // sequential: true,
+            handler: async () => {
+                const old_path = pathresolve(location, oldname);
+                const new_path = pathresolve(location, new_name);
+
+                // early escape if file doesn't exists;
+                const isPathExists = await pathExists(old_path);
+                if (!isPathExists) return;
+
+                await move(old_path, new_path, { overwrite: true });
+            },
+        },
+    };
+}
 
 /**
  * Creates a Rollup plugin that copies a manifest file to the specified distribution directory
@@ -129,48 +164,78 @@ function CopyManifestToDistPlugin(
 ): Rollup.Plugin {
     return {
         name: "plugin:copy-manifest-to-dist",
-        buildEnd: async () => {
-            await copyNewer(pattern, destDir, {
-                verbose: true,
-                cwd: ".", // grab manifest files from current root directory
-            });
-        },
-    };
-}
-function AddHotReloadPlugin(
-    destDir,
-    isHotReload: boolean = false
-): Rollup.Plugin {
-    return {
-        name: "hotreload",
-        buildEnd: async () => {
-            if (isHotReload) {
-                await ensureFile(destDir + "/.hotreload");
-            }
+        closeBundle: {
+            sequential: true,
+            handler: async () => {
+                await copyNewer(pattern, destDir, {
+                    verbose: true,
+                    cwd: ".", // grab manifest files from current root directory
+                });
+            },
         },
     };
 }
 
+/**
+ * @typedoc
+ * Creates a Rollup plugin that triggers a hot reload by creating a `.hotreload` file
+ * in the specified destination directory when the build ends.
+ *
+ * @param destDir - The directory where the `.hotreload` file will be created.
+ * @param isHotReload - Optional. If `true`, enables hot reload functionality. Defaults to `false`.
+ * @returns A Rollup plugin object that handles hot reload signaling.
+ */
+function AddHotReloadPlugin(
+    destDir: string,
+    isHotReload: boolean = false
+): Rollup.Plugin {
+    return {
+        name: "hotreload",
+        closeBundle: {
+            sequential: true,
+            handler: async () => {
+                if (isHotReload) {
+                    await ensureFile(`${destDir}/.hotreload`);
+                }
+            },
+        },
+    };
+}
+
+/**
+ * Creates a Rollup plugin that moves build artifacts from a source directory to a target directory after the bundle is closed.
+ *
+ * The plugin copies files matching the pattern `{main.js,styles.css,manifest.*.json}` from the specified `fromDir` to `toDir`.
+ * It uses the `copyNewer` function to perform the copy operation, ensuring only newer files are copied.
+ *
+ * @param fromDir - The source directory containing the build artifacts to move.
+ * @param toDir - The destination directory where the artifacts should be moved.
+ * @returns A Rollup plugin object that performs the move operation during the `closeBundle` hook.
+ */
 function MoveArtifactsUsingPlugin(
     fromDir: string,
     toDir: string
 ): Rollup.Plugin {
     return {
         name: "plugin:move-artifacts",
-        closeBundle: async () => {
-            const pattern = "{main.js,styles.css,manifest.*.json}";
-            const copyNewerFig = {
-                // opts.cwd: string - Same as glob's. The current working directory in which to search. Defaults to process.cwd(). (Included here because you'll most likely need it.) aka this is where your dist file is located;
-                verbose: true,
-                cwd: fromDir,
-            };
-            await copyNewer(
-                // pattern: array|string - One or more glob patterns to select for the files to copy.
-                pattern,
-                // director to copy to
-                toDir,
-                copyNewerFig
-            ).catch(console.log);
+        closeBundle: {
+            order: "post",
+            sequential: true,
+            handler: async () => {
+                const pattern = "{main.js,styles.css,manifest.*.json}";
+                const copyNewerFig = {
+                    // opts.cwd: string - Same as glob's. The current working directory in which to search. Defaults to process.cwd(). (Included here because you'll most likely need it.) aka this is where your dist file is located;
+                    verbose: true,
+                    cwd: fromDir,
+                };
+                await copyNewer(
+                    // pattern: array|string - One or more glob patterns to select for the files to copy.
+                    pattern,
+                    // director to copy to
+                    toDir,
+                    copyNewerFig
+                ).catch(console.log);
+            },
         },
     };
 }

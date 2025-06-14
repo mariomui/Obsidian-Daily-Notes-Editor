@@ -71,7 +71,7 @@ export default defineConfig([
                 },
             ],
             // "import-quotes/import-quotes": ["warn", "single"],
-            "eslint-import-plugin/newline-after-import": ["warn", { count: 2 }],
+            "eslint-import-plugin/newline-after-import": ["warn", { count: 1 }],
             "eslint-import-plugin/order": [
                 "warn",
                 {
