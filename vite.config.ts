@@ -1,11 +1,11 @@
-import path from "node:path";
-import resolve from "@rollup/plugin-node-resolve";
-import replace from "@rollup/plugin-replace";
-import terser from "@rollup/plugin-terser";
-import { svelte } from "@sveltejs/vite-plugin-svelte";
-import autoPreprocess from "svelte-preprocess";
-import { defineConfig } from "vite";
-import type { ConfigEnv, Rollup, UserConfig } from "vite";
+import path from 'node:path';
+import resolve from '@rollup/plugin-node-resolve';
+import replace from '@rollup/plugin-replace';
+import terser from '@rollup/plugin-terser';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+import autoPreprocess from 'svelte-preprocess';
+import { defineConfig } from 'vite';
+import type { ConfigEnv, Rollup, UserConfig } from 'vite';
 
 // const prod = process.argv[4] === "production";
 

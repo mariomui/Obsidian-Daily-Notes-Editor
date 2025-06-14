@@ -1,4 +1,4 @@
-import type { Rollup, UserConfig, UserConfigFn } from "vite";
+import type { Rollup, UserConfig, UserConfigFn } from 'vite';
 
 
 interface Pipe {

@@ -1,15 +1,15 @@
 // import { defineConfig, globalIgnores } from "eslint";
 const require = createRequire(import.meta.url);
-import { createRequire } from "node:module";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { FlatCompat } from "@eslint/eslintrc";
-import js from "@eslint/js/src/index.js";
-import typescriptEslint from "@typescript-eslint/eslint-plugin";
-import tsParser from "@typescript-eslint/parser";
-import importEslint from "eslint-plugin-import";
-import globals from "globals";
-import parser from "svelte-eslint-parser";
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { FlatCompat } from '@eslint/eslintrc';
+import js from '@eslint/js/src/index.js';
+import typescriptEslint from '@typescript-eslint/eslint-plugin';
+import tsParser from '@typescript-eslint/parser';
+import importEslint from 'eslint-plugin-import';
+import globals from 'globals';
+import parser from 'svelte-eslint-parser';
 // import importQuotesRule from "./eslint-plugins/eslint-import-quotes/import-quotes.mjs";
 
 const { defineConfig, globalIgnores } = require("eslint/config");
@@ -40,7 +40,7 @@ export default defineConfig([
         ),
 
         plugins: {
-            "import-quotes": importQuotesRule,
+            // "import-quotes": importQuotesRule,
             "eslint-import-plugin": importEslint,
             "@typescript-eslint": typescriptEslint,
         },
