@@ -25,8 +25,15 @@ function manuViteFig(configEnv: ConfigEnv): UserConfig {
 
     // # KNOBS
     const dist = "dist";
-    const entrypoint_path = "./src/main.ts";
+    // ## FEATURE KNOBS
+    const isPrototyping = true;
+    const PROTOTYPE_ENTRYPOINT = "./src/main.ts";
+    const ORIGINAL_ENTRYPOINT = "./src/dailyNoteViewIndex.ts";
+    const entrypoint_path = isPrototyping
+        ? PROTOTYPE_ENTRYPOINT
+        : ORIGINAL_ENTRYPOINT;
 
+    // # BUILD LOGIC
     const _userFig: UserConfig = {
         plugins: [
             svelte({
@@ -107,7 +114,9 @@ function manuViteFig(configEnv: ConfigEnv): UserConfig {
             .withRollupBuildPlugins([
                 AddHotReloadPlugin(outDir, true),
                 MoveArtifactsUsingPlugin(dist, outDir),
-                RenameFilePlugin(outDir, "manifest.dev.json", "manifest.json"),
+                RenameFilePlugin(outDir, "manifest.dev.json", "manifest.json", {
+                    order: "post",
+                }),
                 // last one here should not be sequential or else there's a waiting sequence
             ]);
     }
@@ -151,6 +160,11 @@ function manuTerserPlugin(
     });
 }
 
+type HookOptions<T = {}> = Omit<
+    Extract<Rollup.ObjectHook<any>, { handler: any }>,
+    "handler"
+> &
+    T;
 /**
  * Vite plugin to rename a file after the build process completes.
  *
@@ -159,8 +173,13 @@ function manuTerserPlugin(
  * @param new_name - The new filename to rename to.
  * @returns A Vite plugin object that renames the specified file after the bundle is closed.
  */
-function RenameFilePlugin(location, oldname, new_name): Rollup.Plugin {
-    const plugin_name = "renameFileAfterBuildFinale";
+function RenameFilePlugin(
+    location,
+    oldname,
+    new_name,
+    options: HookOptions<{ sequential?: boolean }>
+): Rollup.Plugin {
+    const plugin_name = RenameFilePlugin.name;
     const old_path = pathresolve(location, oldname);
     const new_path = pathresolve(location, new_name);
 
@@ -173,6 +192,7 @@ function RenameFilePlugin(location, oldname, new_name): Rollup.Plugin {
         name: plugin_name,
         closeBundle: {
             // sequential: true,
+            ...options,
             handler: async function () {
                 // early escape if file doesn't exists;
                 const isPathExists = await pathExists(old_path);
