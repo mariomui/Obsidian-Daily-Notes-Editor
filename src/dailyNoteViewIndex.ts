@@ -1,3 +1,8 @@
+import { DAILY_NOTE_VIEW_TYPE, DailyNoteView } from "@src/dailyNoteView";
+import { DailyNoteEditor, isDailyNoteLeaf } from "@src/leafView";
+import { createUpDownNavigationExtension } from "@src/lib/UpAndDownNavigate";
+import type { TimeField } from "@src/types/time.d";
+import { addIconList } from "@src/utils/icon";
 import { around } from "monkey-around";
 import {
     moment,
@@ -21,13 +26,8 @@ import {
     DailyNoteSettingTab,
     DEFAULT_SETTINGS,
 } from "./dailyNoteSettings";
-import { DAILY_NOTE_VIEW_TYPE, DailyNoteView } from "./dailyNoteView";
-import { DailyNoteEditor, isDailyNoteLeaf } from "./leafView";
-import { createUpDownNavigationExtension } from "./lib/UpAndDownNavigate";
-import "./style/index.css";
+import "@src/style/index.css";
 // import { setActiveEditorExt } from "./component/SetActiveEditor";
-import type { TimeField } from "./types/time.d";
-import { addIconList } from "./utils/icon";
 
 export default class DailyNoteViewPlugin extends Plugin {
     private view: DailyNoteView;
