@@ -3,7 +3,7 @@ import {
     ItemView,
     Scope,
     type TAbstractFile,
-    type TFile,
+    TFile,
     Menu,
     Modal,
     type App,

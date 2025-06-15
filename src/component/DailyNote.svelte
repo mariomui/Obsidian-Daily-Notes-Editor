@@ -1,6 +1,6 @@
 <script lang="ts">
     import type DailyNoteViewPlugin from "../dailyNoteViewIndex";
-    import { MarkdownView, type TAbstractFile, type TFile, type WorkspaceLeaf } from "obsidian";
+    import { MarkdownView, type TAbstractFile, TFile, type WorkspaceLeaf } from "obsidian";
     import { spawnLeafView } from "../leafView";
     import { onDestroy, onMount } from "svelte";
 

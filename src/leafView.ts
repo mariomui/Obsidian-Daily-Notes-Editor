@@ -12,12 +12,12 @@ import {
     PopoverState,
     requireApiVersion,
     resolveSubpath,
-    type TFile,
+    TFile,
     type View,
     type Workspace,
     type WorkspaceLeaf,
     WorkspaceSplit,
-    type WorkspaceTabs,
+    WorkspaceTabs,
 } from "obsidian";
 
 import type DailyNoteViewPlugin from "./dailyNoteViewIndex";

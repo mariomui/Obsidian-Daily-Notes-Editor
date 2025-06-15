@@ -39,7 +39,8 @@
         "**/*.svelte",
         "**/*.ts",
         "src/**/*",
-        "utils/*.mts,"
+        "utils/*.mts,",
+        "../../../../Google Drive/sbrain/neuro-atypical/.obsidian/plugins/dev-daily-notes-editor/main.js"
     ],
     "exclude": [
         "dist/**/*.*",
