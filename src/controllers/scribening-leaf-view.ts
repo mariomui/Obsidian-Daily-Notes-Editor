@@ -4,6 +4,8 @@
 // And also monkey around the Obsidian original method.
 
 import type DailyNoteViewPlugin from "@src/dailyNoteViewIndex";
+import type ScribeningPlugin from "@src/main";
+
 import { genId } from "@utils/utils";
 import {
     Component,
@@ -23,20 +25,27 @@ import {
     WorkspaceTabs,
 } from "obsidian";
 
-export interface DailyNoteEditorParent {
-    hoverPopover: DailyNoteEditor | null;
+// export interface DailyNoteEditorParent {
+//     hoverPopover: DailyNoteEditor | null;
+//     containerEl?: HTMLElement;
+//     view?: View;
+//     dom?: HTMLElement;
+// }
+
+export interface ScribeningNoteEditorParent {
+    hoverPopover: ScribeningNoteEditor | null;
     containerEl?: HTMLElement;
     view?: View;
     dom?: HTMLElement;
 }
 
-const popovers = new WeakMap<Element, DailyNoteEditor>();
+const popovers = new WeakMap<Element, ScribeningNoteEditor>();
 type ConstructableWorkspaceSplit = new (
     ws: Workspace,
     dir: "horizontal" | "vertical"
 ) => WorkspaceSplit;
 
-export function isDailyNoteLeaf(leaf: WorkspaceLeaf) {
+export function isScribeningNoteLeaf(leaf: WorkspaceLeaf) {
     // Work around missing enhance.js API by checking match condition instead of looking up parent
     return leaf.containerEl.matches(".dn-editor.dn-leaf-view .workspace-leaf");
 }
@@ -50,19 +59,19 @@ function nosuper<T>(base: new (...args: unknown[]) => T): new () => T {
 }
 
 export const spawnLeafView = (
-    plugin: DailyNoteViewPlugin,
+    plugin: ScribeningPlugin,
     initiatingEl?: HTMLElement,
     leaf?: WorkspaceLeaf,
     onShowCallback?: () => unknown
-): [WorkspaceLeaf, DailyNoteEditor] => {
+): [WorkspaceLeaf, ScribeningNoteEditor] => {
     // When Obsidian doesn't set any leaf active, use leaf instead.
     let parent = plugin.app.workspace
-        .activeLeaf as unknown as DailyNoteEditorParent;
-    if (!parent) parent = leaf as unknown as DailyNoteEditorParent;
+        .activeLeaf as unknown as ScribeningNoteEditorParent;
+    if (!parent) parent = leaf as unknown as ScribeningNoteEditorParent;
 
     if (!initiatingEl) initiatingEl = parent?.containerEl;
 
-    const hoverPopover = new DailyNoteEditor(
+    const hoverPopover = new ScribeningNoteEditor(
         parent,
         initiatingEl!,
         plugin,
@@ -73,7 +82,7 @@ export const spawnLeafView = (
 };
 
 // @ts-ignore
-export class DailyNoteEditor extends nosuper(HP) {
+export class ScribeningNoteEditor extends nosuper(HP) {
     onTarget: boolean;
     setActive: (event: MouseEvent) => void;
 
@@ -98,7 +107,7 @@ export class DailyNoteEditor extends nosuper(HP) {
     // It is currently not useful.
     // leafInHoverEl: WorkspaceLeaf;
 
-    oldPopover = this.parent?.DailyNoteEditor;
+    oldPopover = this.parent?.ScribeningNoteEditor;
     document: Document;
 
     id = genId(8);
@@ -107,7 +116,7 @@ export class DailyNoteEditor extends nosuper(HP) {
 
     originalPath: string; // these are kept to avoid adopting targets w/a different link
     originalLinkText: string;
-    static activePopover?: DailyNoteEditor;
+    static activePopover?: ScribeningNoteEditor;
 
     static activeWindows() {
         const windows: Window[] = [window];
@@ -121,7 +130,7 @@ export class DailyNoteEditor extends nosuper(HP) {
         return windows;
     }
 
-    static containerForDocument(plugin: DailyNoteViewPlugin, doc: Document) {
+    static containerForDocument(plugin: ScribeningPlugin, doc: Document) {
         if (doc !== document && plugin.app.workspace.floatingSplit)
             for (const container of plugin.app.workspace.floatingSplit
                 .children) {
@@ -166,9 +175,9 @@ export class DailyNoteEditor extends nosuper(HP) {
     hoverEl: HTMLElement;
 
     constructor(
-        parent: DailyNoteEditorParent,
+        parent: ScribeningNoteEditorParent,
         public targetEl: HTMLElement,
-        public plugin: DailyNoteViewPlugin,
+        public plugin: ScribeningPlugin,
         waitTime?: number,
         public onShowCallback?: () => unknown
     ) {
@@ -291,7 +300,10 @@ export class DailyNoteEditor extends nosuper(HP) {
                 this.document === document ? "rootSplit" : "floatingSplit"
             ]!;
         this.rootSplit.getContainer = () =>
-            DailyNoteEditor.containerForDocument(this.plugin, this.document);
+            ScribeningNoteEditor.containerForDocument(
+                this.plugin,
+                this.document
+            );
 
         this.titleEl.insertAdjacentElement(
             "afterend",
@@ -382,7 +394,7 @@ export class DailyNoteEditor extends nosuper(HP) {
     }
 
     shouldShowChild(): boolean {
-        return DailyNoteEditor.activePopovers().some((popover) => {
+        return ScribeningNoteEditor.activePopovers().some((popover) => {
             if (
                 popover !== this &&
                 popover.targetEl &&
@@ -441,8 +453,8 @@ export class DailyNoteEditor extends nosuper(HP) {
 
     onHide() {
         this.oldPopover = null;
-        if (this.parent?.DailyNoteEditor === this) {
-            this.parent.DailyNoteEditor = null;
+        if (this.parent?.ScribeningNoteEditor === this) {
+            this.parent.ScribeningNoteEditor = null;
         }
     }
 

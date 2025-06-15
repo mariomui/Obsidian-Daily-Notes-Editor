@@ -30,7 +30,15 @@
         "typeRoots": [
             "node_modules/@types",
             "src/types"
-        ]
+        ],
+        "paths": {
+            "@src/*": [
+                "src/*"
+            ],
+            "@utils/*": [
+                "src/utils/*"
+            ]
+        },
     },
     //	"extends": "@tsconfig/svelte/tsconfig.json",
     "include": [

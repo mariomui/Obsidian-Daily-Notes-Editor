@@ -1,5 +1,6 @@
-import DailyNoteEditorView from "@src/component/DailyNoteEditorView.svelte";
-import DailyNoteViewPlugin from "@src/dailyNoteViewIndex";
+// import DailyNoteEditorView from "@src/component/DailyNoteEditorView.svelte";
+import ScribeningEditorView from "@src/component/ScribeningEditorView.svelte";
+import ScribeningPlugin from "@src/main";
 import type { TimeRange, TimeField } from "@src/types/time";
 import {
     type WorkspaceLeaf,
@@ -13,17 +14,17 @@ import {
     ButtonComponent,
 } from "obsidian";
 
-export const DAILY_NOTE_VIEW_TYPE = "daily-note-editor-view";
+export const SCRIBENING_NOTE_VIEW_TYPE = "SCRIBENING-NOTE-VIEW";
 
 export function isEmebeddedLeaf(leaf: WorkspaceLeaf) {
     // Work around missing enhance.js API by checking match condition instead of looking up parent
     return (leaf as any).containerEl.matches(".dn-leaf-view");
 }
 
-export class DailyNoteView extends ItemView {
-    view: DailyNoteEditorView;
-    plugin: DailyNoteViewPlugin;
-    scope: Scope;
+export class ScribeningNoteView extends ItemView {
+    view: ScribeningEditorView;
+    plugin: ScribeningPlugin;
+    scope: Scope; // For keyboard shortcuts
 
     selectedDaysRange: TimeRange = "all";
     selectionMode: "daily" | "folder" | "tag" = "daily";
@@ -35,7 +36,7 @@ export class DailyNoteView extends ItemView {
         end: Date;
     } | null = null;
 
-    constructor(leaf: WorkspaceLeaf, plugin: DailyNoteViewPlugin) {
+    constructor(leaf: WorkspaceLeaf, plugin: ScribeningPlugin) {
         super(leaf);
         this.plugin = plugin;
 
@@ -47,7 +48,7 @@ export class DailyNoteView extends ItemView {
     };
 
     getViewType(): string {
-        return DAILY_NOTE_VIEW_TYPE;
+        return SCRIBENING_NOTE_VIEW_TYPE;
     }
 
     getDisplayText(): string {
@@ -158,7 +159,7 @@ export class DailyNoteView extends ItemView {
             if (customState.customRange)
                 this.customRange = customState.customRange;
 
-            this.view = new DailyNoteEditorView({
+            this.view = new ScribeningEditorView({
                 target: this.contentEl,
                 props: {
                     plugin: this.plugin,

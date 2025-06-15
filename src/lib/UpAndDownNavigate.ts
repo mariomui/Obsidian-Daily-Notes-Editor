@@ -1,5 +1,7 @@
 import { type Extension, Prec } from "@codemirror/state";
 import { type EditorView, type KeyBinding, keymap } from "@codemirror/view";
+import type DailyNoteViewPlugin from "@src/dailyNoteViewIndex";
+import { isDailyNoteLeaf } from "@src/leafView";
 import {
     type App,
     type Editor,
@@ -9,8 +11,6 @@ import {
     type TFile,
     type WorkspaceLeaf,
 } from "obsidian";
-import type DailyNoteViewPlugin from "src/dailyNoteViewIndex";
-import { isDailyNoteLeaf } from "../leafView";
 
 export interface UpAndDownNavigateOptions {
     app: App;

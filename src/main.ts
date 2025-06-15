@@ -1,3 +1,15 @@
+// import { createUpDownNavigationExtension } from "@src/lib/UpAndDownNavigate";
+import {
+    ScribeningNoteView,
+    SCRIBENING_NOTE_VIEW_TYPE,
+} from "@src/controllers/ScribeningNoteView";
+import {
+    type DailyNoteSettings,
+    // DailyNoteSettingTab,
+    DEFAULT_SETTINGS,
+} from "@src/dailyNoteSettings";
+// import { DailyNoteEditor, isDailyNoteLeaf } from "@src/leafView";
+import type { TimeField } from "@src/types/time";
 import { around } from "monkey-around";
 import {
     moment,
@@ -5,7 +17,6 @@ import {
     Plugin,
     requireApiVersion,
     TFile,
-    TFolder,
     Workspace,
     WorkspaceContainer,
     type WorkspaceItem,
@@ -16,21 +27,18 @@ import {
     getAllDailyNotes,
     getDailyNote,
 } from "obsidian-daily-notes-interface";
-import { createUpDownNavigationExtension } from "./component/UpAndDownNavigate";
+// import { DAILY_NOTE_VIEW_TYPE, DailyNoteView } from "./dailyNoteView";
+
+import "@src/style/index.css";
 import {
-    type DailyNoteSettings,
-    DailyNoteSettingTab,
-    DEFAULT_SETTINGS,
-} from "./dailyNoteSettings";
-import { DAILY_NOTE_VIEW_TYPE, DailyNoteView } from "./dailyNoteView";
-import { DailyNoteEditor, isDailyNoteLeaf } from "./leafView";
-import "./style/index.css";
+    ScribeningNoteEditor,
+    isScribeningNoteLeaf,
+} from "./controllers/scribening-leaf-view";
 // import { setActiveEditorExt } from "./component/SetActiveEditor";
-import type { TimeField } from "./types/time";
-import { addIconList } from "./utils/icon";
+// import { addIconList } from "./utils/icon";
 
 export default class Scribening extends Plugin {
-    private view: DailyNoteView;
+    private view: ScribeningNoteView;
     lastActiveFile: TFile;
     private lastCheckedDay: string;
 
@@ -55,9 +63,11 @@ export default class Scribening extends Plugin {
         //         // setActiveEditorExt({ app: this.app, plugin: this }),
         //     ]);
 
+        // Register Factory Function so That Obsidian can use it to create future instances
         this.registerView(
-            DAILY_NOTE_VIEW_TYPE,
-            (leaf: WorkspaceLeaf) => (this.view = new DailyNoteView(leaf, this))
+            SCRIBENING_NOTE_VIEW_TYPE,
+            (leaf: WorkspaceLeaf) =>
+                (this.view = new ScribeningNoteView(leaf, this))
         );
 
         this.addCommand({
@@ -66,69 +76,69 @@ export default class Scribening extends Plugin {
             callback: () => this.openDailyNoteEditor(),
         });
 
-        this.initCssRules();
+        // this.initCssRules();
 
         // Create daily note and open the Daily Notes Editor on startup if enabled
-        if (this.settings.createAndOpenOnStartup) {
-            this.app.workspace.onLayoutReady(async () => {
-                // First ensure today's daily note exists
-                await this.ensureTodaysDailyNoteExists();
-                if (
-                    this.app.workspace.getLeavesOfType(DAILY_NOTE_VIEW_TYPE)
-                        .length > 0
-                )
-                    return;
-                // Then open the Daily Notes Editor
-                await this.openDailyNoteEditor();
-            });
-        }
+        // if (this.settings.createAndOpenOnStartup) {
+        //     this.app.workspace.onLayoutReady(async () => {
+        //         // First ensure today's daily note exists
+        //         await this.ensureTodaysDailyNoteExists();
+        //         if (
+        //             this.app.workspace.getLeavesOfType(SCRIBENING_NOTE_VIEW_TYPE)
+        //                 .length > 0
+        //         )
+        //             return;
+        //         // Then open the Daily Notes Editor
+        //         await this.openDailyNoteEditor();
+        //     });
+        // }
 
         // Also check periodically (every 15 minutes) for day changes
-        this.registerInterval(
-            window.setInterval(this.checkDayChange.bind(this), 1000 * 60 * 15)
-        );
+        // this.registerInterval(
+        //     window.setInterval(this.checkDayChange.bind(this), 1000 * 60 * 15)
+        // );
 
-        this.app.workspace.on("file-menu", (menu, file, source, leaf) => {
-            if (file instanceof TFolder) {
-                for (const item of menu.items) {
-                    if (
-                        item.dom.getAttribute("data-open-daily-note") === "true"
-                    ) {
-                        menu.dom.removeChild(item.dom);
-                    }
-                }
-                menu.addItem((item) => {
-                    item.setIcon("calendar-range");
-                    item.setTitle("Open daily notes for this folder");
-                    item.onClick(() => {
-                        this.openFolderView(file.path);
-                    });
-                    item.dom.setAttribute("data-open-daily-note", "true");
-                });
-            }
-        });
+        // this.app.workspace.on("file-menu", (menu, file, source, leaf) => {
+        //     if (file instanceof TFolder) {
+        //         for (const item of menu.items) {
+        //             if (
+        //                 item.dom.getAttribute("data-open-daily-note") === "true"
+        //             ) {
+        //                 menu.dom.removeChild(item.dom);
+        //             }
+        //         }
+        //         menu.addItem((item) => {
+        //             item.setIcon("calendar-range");
+        //             item.setTitle("Open daily notes for this folder");
+        //             item.onClick(() => {
+        //                 this.openFolderView(file.path);
+        //             });
+        //             item.dom.setAttribute("data-open-daily-note", "true");
+        //         });
+        //     }
+        // });
     }
 
     onunload() {
-        this.app.workspace.detachLeavesOfType(DAILY_NOTE_VIEW_TYPE);
-        document.body.toggleClass("daily-notes-hide-frontmatter", false);
-        document.body.toggleClass("daily-notes-hide-backlinks", false);
+        this.app.workspace.detachLeavesOfType(SCRIBENING_NOTE_VIEW_TYPE);
+        // document.body.toggleClass("daily-notes-hide-frontmatter", false);
+        // document.body.toggleClass("daily-notes-hide-backlinks", false);
     }
 
     async openDailyNoteEditor() {
         const workspace = this.app.workspace;
         const leaf = workspace.getLeaf(true);
-        await leaf.setViewState({ type: DAILY_NOTE_VIEW_TYPE });
+        await leaf.setViewState({ type: SCRIBENING_NOTE_VIEW_TYPE });
         workspace.revealLeaf(leaf);
     }
 
     async openFolderView(folderPath: string, timeField: TimeField = "mtime") {
         const workspace = this.app.workspace;
         const leaf = workspace.getLeaf(true);
-        await leaf.setViewState({ type: DAILY_NOTE_VIEW_TYPE });
+        await leaf.setViewState({ type: SCRIBENING_NOTE_VIEW_TYPE });
 
         // Get the view and set the selection mode to folder
-        const view = leaf.view as DailyNoteView;
+        const view = leaf.view as ScribeningNoteView;
         view.setSelectionMode("folder", folderPath);
         view.setTimeField(timeField);
 
@@ -138,10 +148,10 @@ export default class Scribening extends Plugin {
     async openTagView(tagName: string, timeField: TimeField = "mtime") {
         const workspace = this.app.workspace;
         const leaf = workspace.getLeaf(true);
-        await leaf.setViewState({ type: DAILY_NOTE_VIEW_TYPE });
+        await leaf.setViewState({ type: SCRIBENING_NOTE_VIEW_TYPE });
 
         // Get the view and set the selection mode to tag
-        const view = leaf.view as DailyNoteView;
+        const view = leaf.view as ScribeningNoteView;
         view.setSelectionMode("tag", tagName);
         view.setTimeField(timeField);
 
@@ -182,7 +192,9 @@ export default class Scribening extends Plugin {
                     if (!result) {
                         if (t?.VIEW_TYPE === "markdown") {
                             const activeLeaf = this.activeLeaf;
-                            if (activeLeaf?.view instanceof DailyNoteView) {
+                            if (
+                                activeLeaf?.view instanceof ScribeningNoteView
+                            ) {
                                 return activeLeaf.view.editMode;
                             } else {
                                 return result;
@@ -226,7 +238,7 @@ export default class Scribening extends Plugin {
                             (WorkspaceContainer &&
                                 parent instanceof WorkspaceContainer)
                         ) {
-                            for (const popover of DailyNoteEditor.popoversForWindow(
+                            for (const popover of ScribeningNoteEditor.popoversForWindow(
                                 (parent as WorkspaceContainer).win
                             )) {
                                 // Use old API here for compat w/0.14.x
@@ -277,13 +289,13 @@ export default class Scribening extends Plugin {
                 setPinned(old) {
                     return function (pinned: boolean) {
                         old.call(this, pinned);
-                        if (isDailyNoteLeaf(this) && !pinned)
+                        if (isScribeningNoteLeaf(this) && !pinned)
                             this.setPinned(true);
                     };
                 },
                 openFile(old) {
                     return function (file: TFile, openState?: OpenViewState) {
-                        if (isDailyNoteLeaf(this)) {
+                        if (isScribeningNoteLeaf(this)) {
                             setTimeout(
                                 around(Workspace.prototype, {
                                     recordMostRecentOpenedFile(old) {
@@ -336,25 +348,26 @@ export default class Scribening extends Plugin {
         await this.saveData(this.settings);
     }
 
-    private async checkDayChange(): Promise<void> {
-        const currentDay = (moment as any)().format("YYYY-MM-DD");
+    // private async checkDayChange(): Promise<void> {
+    //     const currentDay = (moment as any)().format("YYYY-MM-DD");
 
-        if (currentDay !== this.lastCheckedDay) {
-            this.lastCheckedDay = currentDay;
-            console.log("Day changed, updating daily notes view");
+    //     if (currentDay !== this.lastCheckedDay) {
+    //         this.lastCheckedDay = currentDay;
+    //         console.log("Day changed, updating daily notes view");
 
-            await this.ensureTodaysDailyNoteExists();
+    //         await this.ensureTodaysDailyNoteExists();
 
-            const dailyNoteLeaves =
-                this.app.workspace.getLeavesOfType(DAILY_NOTE_VIEW_TYPE);
-            if (dailyNoteLeaves.length > 0) {
-                for (const leaf of dailyNoteLeaves) {
-                    const view = leaf.view as DailyNoteView;
-                    if (view) {
-                        view.refreshForNewDay();
-                    }
-                }
-            }
-        }
-    }
+    //         const dailyNoteLeaves = this.app.workspace.getLeavesOfType(
+    //             SCRIBENING_NOTE_VIEW_TYPE
+    //         );
+    //         if (dailyNoteLeaves.length > 0) {
+    //             for (const leaf of dailyNoteLeaves) {
+    //                 const view = leaf.view as ScribeningNoteView;
+    //                 if (view) {
+    //                     view.refreshForNewDay();
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 }

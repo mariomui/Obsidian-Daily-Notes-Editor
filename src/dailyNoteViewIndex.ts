@@ -16,7 +16,6 @@ import {
     getAllDailyNotes,
     getDailyNote,
 } from "obsidian-daily-notes-interface";
-import { createUpDownNavigationExtension } from "./component/UpAndDownNavigate";
 import {
     type DailyNoteSettings,
     DailyNoteSettingTab,
@@ -24,6 +23,7 @@ import {
 } from "./dailyNoteSettings";
 import { DAILY_NOTE_VIEW_TYPE, DailyNoteView } from "./dailyNoteView";
 import { DailyNoteEditor, isDailyNoteLeaf } from "./leafView";
+import { createUpDownNavigationExtension } from "./lib/UpAndDownNavigate";
 import "./style/index.css";
 // import { setActiveEditorExt } from "./component/SetActiveEditor";
 import type { TimeField } from "./types/time.d";

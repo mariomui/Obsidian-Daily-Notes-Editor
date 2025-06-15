@@ -13,7 +13,7 @@ import { ConfigEnv, Rollup, UserConfig } from "vite";
 import { defineConfig } from "vite";
 import type { PipeConstructor } from "./rollphidian.mts";
 import { Pipe } from "./rollphidian.mts";
-import { RollupLogger } from "./utils/RollupLogger.mts";
+import { RollupLogger } from "./build-utils/RollupLogger.mts";
 import builtins from "builtin-modules";
 
 // const prod = process.argv[4] === "production";
@@ -25,6 +25,7 @@ function manuViteFig(configEnv: ConfigEnv): UserConfig {
 
     // # KNOBS
     const dist = "dist";
+    const entrypoint_path = "./src/main.ts";
 
     const _userFig: UserConfig = {
         plugins: [
@@ -32,14 +33,18 @@ function manuViteFig(configEnv: ConfigEnv): UserConfig {
                 preprocess: autoPreprocess(),
             }),
         ],
-        resolve: {},
+        resolve: {
+            alias: [
+                { find: "@src", replacement: join(__dirname, "src") },
+                { find: "@utils", replacement: join(__dirname, "src/utils") },
+            ],
+        },
         build: {
             sourcemap: mode === "development" ? "inline" : false,
             minify: mode !== "development",
             // Use Vite lib mode https://vitejs.dev/guide/build.html#library-mode
             lib: {
-                entry: new URL("./src/dailyNoteViewIndex.ts", import.meta.url)
-                    .pathname,
+                entry: new URL(entrypoint_path, import.meta.url).pathname,
                 formats: ["cjs"],
             },
             rollupOptions: {
