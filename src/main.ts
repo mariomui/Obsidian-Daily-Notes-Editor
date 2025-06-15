@@ -3,12 +3,7 @@ import {
     ScribeningNoteView,
     SCRIBENING_NOTE_VIEW_TYPE,
 } from "@src/controllers/ScribeningNoteView";
-import {
-    type DailyNoteSettings,
-    // DailyNoteSettingTab,
-    DEFAULT_SETTINGS,
-} from "@src/dailyNoteSettings";
-// import { DailyNoteEditor, isDailyNoteLeaf } from "@src/leafView";
+
 import type { TimeField } from "@src/types/time";
 import { around } from "monkey-around";
 import {
@@ -42,15 +37,22 @@ export default class Scribening extends Plugin {
     lastActiveFile: TFile;
     private lastCheckedDay: string;
 
-    settings: DailyNoteSettings;
+    settings: {
+        hideFrontmatter: boolean;
+        hideBacklinks: boolean;
+        createAndOpenOnStartup: boolean;
+        useArrowUpOrDownToNavigate: boolean;
+        preset: any[];
+    };
 
     async onload() {
-        // this.addSettingTab(new DailyNoteSettingTab(this.app, this));
+        // load data into data.json
         await this.loadSettings();
+
         this.patchWorkspace();
         this.patchWorkspaceLeaf();
-        // addIconList();
 
+        // addIconList();
         // this.lastCheckedDay = (moment as any)().format("YYYY-MM-DD");
 
         // Register the up and down navigation extension
@@ -186,26 +188,32 @@ export default class Scribening extends Plugin {
     patchWorkspace() {
         let layoutChanging = false;
         const uninstaller = around(Workspace.prototype, {
-            getActiveViewOfType: (next: any) =>
-                function (t: any) {
-                    const result = next.call(this, t);
-                    if (!result) {
-                        if (t?.VIEW_TYPE === "markdown") {
-                            const activeLeaf = this.activeLeaf;
-                            if (
-                                activeLeaf?.view instanceof ScribeningNoteView
-                            ) {
-                                return activeLeaf.view.editMode;
-                            } else {
-                                return result;
-                            }
+            // somemethod: function somemethod(oldmethod)  { ... }
+            getActiveViewOfType: (oldmethod) =>
+                function (func: any) {
+                    //
+                    const viewInstance = oldmethod.call(this, func);
+                    if (!viewInstance && func?.VIEW_TYPE === "markdown") {
+                        // the current workspace , the current leaf, aka container that houses a view.
+                        const activeLeaf = this.activeLeaf;
+
+                        // if the container, the view inside is my registered viewtype do nothing.
+                        if (activeLeaf?.view instanceof ScribeningNoteView) {
+                            // const editMode = activeLeaf.view.editMode;
+
+                            return activeLeaf.view.whateveryouwantwhocares;
                         }
+                        return viewInstance;
                     }
-                    return result;
+
+                    return viewInstance;
                 },
             changeLayout(old) {
                 return async function (workspace: unknown) {
                     layoutChanging = true;
+                    console.log("changing");
+                    // changeLayout(workspace: any): Promise<void>;
+
                     try {
                         // Don't consider hover popovers part of the workspace while it's changing
                         await old.call(this, workspace);
@@ -214,25 +222,44 @@ export default class Scribening extends Plugin {
                     }
                 };
             },
-            iterateLeaves(old) {
+            iterateLeaves(old): Workspace["iterateLeaves"] {
+                //iterateLeaves is a recursive function that returns a boolean
+                //iterateLeaves is called by all the iterate* functions
+                // getLeavesOfType searches for a specific viewtype
                 type leafIterator = (item: WorkspaceLeaf) => boolean | void;
                 return function (arg1, arg2) {
                     // Fast exit if desired leaf found
                     if (old.call(this, arg1, arg2)) return true;
 
                     // Handle old/new API parameter swap
+                    // # Handle old/new API parameter swap
+                    // ## workspace.getLeavesByType uses the arity1 signature.
+                    const isCalledByGetLeavesByType =
+                        typeof arg1 === "function";
+
                     const cb: leafIterator = (
-                        typeof arg1 === "function" ? arg1 : arg2
+                        isCalledByGetLeavesByType ? arg1 : arg2
                     ) as leafIterator;
+                    // ## if arg1 a function, then the parent is arg2 (aka undefined)
+                    // ## if arg1 is an object then the parent is arg1 (aka parent of the container type object)
                     const parent: WorkspaceItem = (
-                        typeof arg1 === "function" ? arg2 : arg1
+                        isCalledByGetLeavesByType ? arg2 : arg1
                     ) as WorkspaceItem;
 
-                    if (!parent) return false; // <- during app startup, rootSplit can be null
+                    // iterateAllLeaves and iterateRootLeaves call iterateLeaves with an object in the first parameter. the arg1/parent then has a value.
+
+                    // ## dont run postprocesses when:
+                    // ### on startup,
+                    // #### because parent is null
+                    // ### getLeavesByType is called.
+                    // ### layout is changing
+                    if (!parent) return false;
                     if (layoutChanging) return false; // Don't let HEs close during workspace change
 
                     // 0.14.x doesn't have WorkspaceContainer; this can just be an instanceof check once 15.x is mandatory:
-                    if (!requireApiVersion("0.15.0")) {
+                    const isApiHigherOrEqualToPatch15 =
+                        requireApiVersion("0.15.0");
+                    if (isApiHigherOrEqualToPatch15 === false) {
                         if (
                             parent === this.app.workspace.rootSplit ||
                             (WorkspaceContainer &&
@@ -339,7 +366,13 @@ export default class Scribening extends Plugin {
     public async loadSettings() {
         this.settings = Object.assign(
             {},
-            DEFAULT_SETTINGS,
+            {
+                hideFrontmatter: true,
+                hideBacklinks: true,
+                createAndOpenOnStartup: false,
+                useArrowUpOrDownToNavigate: false,
+                preset: [],
+            },
             await this.loadData()
         );
     }
