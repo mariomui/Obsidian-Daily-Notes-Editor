@@ -1,12 +1,12 @@
 import {
-    WorkspaceLeaf,
+    type WorkspaceLeaf,
     ItemView,
     Scope,
-    TAbstractFile,
-    TFile,
+    type TAbstractFile,
+    type TFile,
     Menu,
     Modal,
-    App,
+    type App,
     ButtonComponent,
 } from "obsidian";
 import DailyNoteEditorView from "./component/DailyNoteEditorView.svelte";

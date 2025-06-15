@@ -1,4 +1,4 @@
-import { App, debounce, PluginSettingTab, Setting, Modal } from "obsidian";
+import { type App, debounce, PluginSettingTab, Setting, Modal } from "obsidian";
 import DailyNoteViewPlugin from "./dailyNoteViewIndex";
 
 export interface DailyNoteSettings {

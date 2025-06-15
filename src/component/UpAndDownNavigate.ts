@@ -1,13 +1,13 @@
 import { type Extension, Prec } from "@codemirror/state";
-import { EditorView, type KeyBinding, keymap } from "@codemirror/view";
+import { type EditorView, type KeyBinding, keymap } from "@codemirror/view";
 import {
-    App,
-    Editor,
+    type App,
+    type Editor,
     editorInfoField,
     type EditorPosition,
     MarkdownView,
-    TFile,
-    WorkspaceLeaf,
+    type TFile,
+    type WorkspaceLeaf,
 } from "obsidian";
 import type DailyNoteViewPlugin from "src/dailyNoteViewIndex";
 import { isDailyNoteLeaf } from "../leafView";

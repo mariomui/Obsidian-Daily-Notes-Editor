@@ -2,7 +2,7 @@
     import type DailyNoteViewPlugin from "../dailyNoteViewIndex";
     import type { WorkspaceLeaf } from "obsidian";
 
-    import { TFile, moment } from "obsidian";
+    import { type TFile, moment } from "obsidian";
     import DailyNote from "./DailyNote.svelte";
     import { inview } from "svelte-inview";
 

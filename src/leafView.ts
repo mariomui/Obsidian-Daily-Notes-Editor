@@ -5,19 +5,19 @@
 import {
     Component,
     type EphemeralState,
-    HoverPopover,
-    MarkdownEditView,
+    HoverPopover as HP,
+    type MarkdownEditView,
     type OpenViewState,
     parseLinktext,
     PopoverState,
     requireApiVersion,
     resolveSubpath,
-    TFile,
-    View,
-    Workspace,
-    WorkspaceLeaf,
+    type TFile,
+    type View,
+    type Workspace,
+    type WorkspaceLeaf,
     WorkspaceSplit,
-    WorkspaceTabs,
+    type WorkspaceTabs,
 } from "obsidian";
 
 import type DailyNoteViewPlugin from "./dailyNoteViewIndex";
@@ -46,7 +46,7 @@ function nosuper<T>(base: new (...args: unknown[]) => T): new () => T {
         return Object.setPrototypeOf(new Component(), new.target.prototype);
     };
     derived.prototype = base.prototype;
-    return Object.setPrototypeOf(derived, base);
+    return Object.setPrototypeOf(derived, base) as any;
 }
 
 export const spawnLeafView = (
@@ -73,7 +73,7 @@ export const spawnLeafView = (
 };
 
 // @ts-ignore
-export class DailyNoteEditor extends nosuper(HoverPopover) {
+export class DailyNoteEditor extends nosuper(HP) {
     onTarget: boolean;
     setActive: (event: MouseEvent) => void;
 

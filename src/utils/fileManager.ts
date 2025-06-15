@@ -1,4 +1,4 @@
-import { TFile, moment, App } from "obsidian";
+import { type TFile, moment, type App } from "obsidian";
 import {
     getAllDailyNotes,
     getDailyNote,

@@ -1,22 +1,20 @@
 import { around } from "monkey-around";
 import {
-    Plugin,
+    moment,
     type OpenViewState,
-    TFile,
+    Plugin,
+    requireApiVersion,
+    type TFile,
+    type TFolder,
     Workspace,
     WorkspaceContainer,
-    WorkspaceItem,
+    type WorkspaceItem,
     WorkspaceLeaf,
-    moment,
-    requireApiVersion,
-    TFolder,
 } from "obsidian";
-import { DailyNoteEditor, isDailyNoteLeaf } from "./leafView";
-import "./style/index.css";
 import {
+    createDailyNote,
     getAllDailyNotes,
     getDailyNote,
-    createDailyNote,
 } from "obsidian-daily-notes-interface";
 import { createUpDownNavigationExtension } from "./component/UpAndDownNavigate";
 import {
@@ -24,8 +22,10 @@ import {
     DailyNoteSettingTab,
     DEFAULT_SETTINGS,
 } from "./dailyNoteSettings";
-// import { setActiveEditorExt } from "./component/SetActiveEditor";
 import { DAILY_NOTE_VIEW_TYPE, DailyNoteView } from "./dailyNoteView";
+import { DailyNoteEditor, isDailyNoteLeaf } from "./leafView";
+import "./style/index.css";
+// import { setActiveEditorExt } from "./component/SetActiveEditor";
 import type { TimeField } from "./types/time.d";
 import { addIconList } from "./utils/icon";
 
