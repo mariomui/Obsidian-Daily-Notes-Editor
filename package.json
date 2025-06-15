@@ -5,11 +5,12 @@
     "main": "main.js",
     "scripts": {
         "xlint": "pnpm dlx eslint --fix --config eslint.config.mjs .",
-        "lint": "npx eslint --fix --ext .ts,.svelte .",
-        "dev": "npm run lint && vite build --watch --mode development",
+        "lint": "pnpm dlx eslint --fix --ext .ts,.svelte .",
+        "dev": "pnpm dlx xlint && vite build --config vite.config.mts --watch --mode development",
         "build": "pnpm dlx svelte-check && vite --config vite.config.mts build --mode production",
         "version": "node version-bump.mjs && git add manifest.json versions.json"
     },
+    "type": "module",
     "keywords": [],
     "author": "Quorafind",
     "devDependencies": {
