@@ -1,13 +1,21 @@
 {
+    "extends": "./.svelte-kit/tsconfig.json",
     "compilerOptions": {
+        "checkJs": true,
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "skipLibCheck": true,
+        "strict": true,
+        "moduleResolution": "bundler",
         "baseUrl": ".",
+        "allowSyntheticDefaultImports": true,
         "inlineSourceMap": true,
         "inlineSources": true,
         "module": "ESNext",
         "target": "ES6",
         "allowJs": true,
         "noImplicitAny": false,
-        "moduleResolution": "node",
         "importHelpers": true,
         "isolatedModules": true,
         "strictNullChecks": true,
@@ -16,9 +24,6 @@
             "ES5",
             "ES6",
             "ES7"
-        ],
-        "types": [
-            "node"
         ]
     },
     //	"extends": "@tsconfig/svelte/tsconfig.json",
@@ -26,6 +31,9 @@
         "**/globals.d.ts",
         "**/*.js",
         "**/*.svelte",
-        "**/*.ts"
+        "**/*.ts",
+    ],
+    "exclude": [
+        "dist/**/*.*"
     ]
 }
