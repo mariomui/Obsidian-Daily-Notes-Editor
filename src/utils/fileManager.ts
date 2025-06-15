@@ -7,7 +7,7 @@ import {
     getDailyNoteSettings,
     DEFAULT_DAILY_NOTE_FORMAT,
 } from "obsidian-daily-notes-interface";
-import { TimeRange, TimeField } from "../types/time";
+import type { TimeRange, TimeField } from "../types/time.d";
 
 export interface FileManagerOptions {
     mode: "daily" | "folder" | "tag";
@@ -214,7 +214,7 @@ export class FileManager {
      * Applicable to folder and tag modes
      */
     private filterFilesByTimeRange(): void {
-        const now = moment();
+        const now = (moment as any)();
         const { isReverse, baseTimeField } = this.parseTimeField(
             this.options.timeField
         );
@@ -222,7 +222,7 @@ export class FileManager {
         // Filter files by creation or modification time
         this.filteredFiles = this.allFiles.filter((file) => {
             // Get the time of the file based on the base timeField option
-            const fileDate = moment(file.stat[baseTimeField]);
+            const fileDate = (moment as any)(file.stat[baseTimeField]);
 
             return this.isDateInRange(fileDate, now);
         });
@@ -238,12 +238,12 @@ export class FileManager {
      * Applicable to daily mode
      */
     private filterDailyNotesByRange(): void {
-        const now = moment();
+        const now = (moment as any)();
         const fileFormat =
             getDailyNoteSettings().format || DEFAULT_DAILY_NOTE_FORMAT;
 
         this.filteredFiles = this.allFiles.filter((file) => {
-            const fileDate = moment(file.basename, fileFormat);
+            const fileDate = (moment as any)(file.basename, fileFormat);
 
             return this.isDateInRange(fileDate, now);
         });
@@ -268,22 +268,22 @@ export class FileManager {
                 return fileDate.isSame(now, "year");
             case "last-week":
                 return fileDate.isBetween(
-                    moment().subtract(1, "week").startOf("week"),
-                    moment().subtract(1, "week").endOf("week"),
+                    (moment as any)().subtract(1, "week").startOf("week"),
+                    (moment as any)().subtract(1, "week").endOf("week"),
                     null,
                     "[]"
                 );
             case "last-month":
                 return fileDate.isBetween(
-                    moment().subtract(1, "month").startOf("month"),
-                    moment().subtract(1, "month").endOf("month"),
+                    (moment as any)().subtract(1, "month").startOf("month"),
+                    (moment as any)().subtract(1, "month").endOf("month"),
                     null,
                     "[]"
                 );
             case "last-year":
                 return fileDate.isBetween(
-                    moment().subtract(1, "year").startOf("year"),
-                    moment().subtract(1, "year").endOf("year"),
+                    (moment as any)().subtract(1, "year").startOf("year"),
+                    (moment as any)().subtract(1, "year").endOf("year"),
                     null,
                     "[]"
                 );
@@ -291,15 +291,19 @@ export class FileManager {
                 return fileDate.isSame(now, "quarter");
             case "last-quarter":
                 return fileDate.isBetween(
-                    moment().subtract(1, "quarter").startOf("quarter"),
-                    moment().subtract(1, "quarter").endOf("quarter"),
+                    (moment as any)().subtract(1, "quarter").startOf("quarter"),
+                    (moment as any)().subtract(1, "quarter").endOf("quarter"),
                     null,
                     "[]"
                 );
             case "custom":
                 if (this.options.customRange) {
-                    const startDate = moment(this.options.customRange.start);
-                    const endDate = moment(this.options.customRange.end);
+                    const startDate = (moment as any)(
+                        this.options.customRange.start
+                    );
+                    const endDate = (moment as any)(
+                        this.options.customRange.end
+                    );
                     return fileDate.isBetween(startDate, endDate, null, "[]");
                 }
                 return false;
@@ -318,7 +322,7 @@ export class FileManager {
         this.cacheDailyNotes = getAllDailyNotes();
 
         // @ts-ignore
-        const currentDate = moment();
+        const currentDate = (moment as any)();
         const currentDailyNote = getDailyNote(
             currentDate,
             this.cacheDailyNotes
@@ -347,7 +351,7 @@ export class FileManager {
             return null;
         }
 
-        const currentDate = moment();
+        const currentDate = (moment as any)();
         const currentDailyNote: any = await createDailyNote(currentDate);
 
         if (currentDailyNote) {
@@ -387,11 +391,11 @@ export class FileManager {
         const lastFilteredFile =
             this.filteredFiles[this.filteredFiles.length - 1];
         const firstFilteredFile = this.filteredFiles[0];
-        const lastFilteredFileDate = moment(
+        const lastFilteredFileDate = (moment as any)(
             lastFilteredFile.basename,
             fileFormat
         );
-        const firstFilteredFileDate = moment(
+        const firstFilteredFileDate = (moment as any)(
             firstFilteredFile.basename,
             fileFormat
         );
@@ -408,7 +412,8 @@ export class FileManager {
             this.filteredFiles = this.sortDailyNotes(this.filteredFiles);
         }
 
-        if (fileDate.isSame(moment(), "day")) this.hasCurrentDay = true;
+        if (fileDate.isSame((moment as any)(), "day"))
+            this.hasCurrentDay = true;
     }
 
     private handleFolderFileCreate(file: TFile): void {

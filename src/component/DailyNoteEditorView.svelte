@@ -5,9 +5,10 @@
     import { TFile, moment } from "obsidian";
     import DailyNote from "./DailyNote.svelte";
     import { inview } from "svelte-inview";
-    import { TimeRange, SelectionMode, TimeField } from "../types/time";
+
+    import type {TimeRange, TimeField, SelectionMode} from "../types/time.d"
     import { onMount } from "svelte";
-    import { FileManager, FileManagerOptions } from "../utils/fileManager";
+    import { FileManager, type FileManagerOptions } from "../utils/fileManager";
 
 
     export let plugin: DailyNoteViewPlugin;
@@ -92,7 +93,7 @@
         // Add range information based on the current selection mode and range
         if (selectionMode === "daily" && selectedRange !== 'all') {
             if (selectedRange === 'custom' && customRange) {
-                titleText = `Showing notes from: ${moment(customRange.start).format('YYYY-MM-DD')} to ${moment(customRange.end).format('YYYY-MM-DD')}`;
+                titleText = `Showing notes from: ${(moment as any)(customRange.start).format('YYYY-MM-DD')} to ${(moment as any)(customRange.end).format('YYYY-MM-DD')}`;
             } else {
                 titleText = `Showing notes for: ${selectedRange}`;
             }

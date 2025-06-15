@@ -1,5 +1,5 @@
-import DailyNoteViewPlugin from "./dailyNoteViewIndex";
 import { App, debounce, PluginSettingTab, Setting, Modal } from "obsidian";
+import DailyNoteViewPlugin from "./dailyNoteViewIndex";
 
 export interface DailyNoteSettings {
     hideFrontmatter: boolean;

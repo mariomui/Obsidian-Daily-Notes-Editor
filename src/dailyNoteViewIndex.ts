@@ -1,6 +1,7 @@
+import { around } from "monkey-around";
 import {
     Plugin,
-    OpenViewState,
+    type OpenViewState,
     TFile,
     Workspace,
     WorkspaceContainer,
@@ -10,25 +11,23 @@ import {
     requireApiVersion,
     TFolder,
 } from "obsidian";
-
-import { around } from "monkey-around";
 import { DailyNoteEditor, isDailyNoteLeaf } from "./leafView";
 import "./style/index.css";
-import { addIconList } from "./utils/icon";
-import {
-    DailyNoteSettings,
-    DailyNoteSettingTab,
-    DEFAULT_SETTINGS,
-} from "./dailyNoteSettings";
-import { TimeField } from "./types/time";
 import {
     getAllDailyNotes,
     getDailyNote,
     createDailyNote,
 } from "obsidian-daily-notes-interface";
 import { createUpDownNavigationExtension } from "./component/UpAndDownNavigate";
+import {
+    type DailyNoteSettings,
+    DailyNoteSettingTab,
+    DEFAULT_SETTINGS,
+} from "./dailyNoteSettings";
 // import { setActiveEditorExt } from "./component/SetActiveEditor";
 import { DAILY_NOTE_VIEW_TYPE, DailyNoteView } from "./dailyNoteView";
+import type { TimeField } from "./types/time.d";
+import { addIconList } from "./utils/icon";
 
 export default class DailyNoteViewPlugin extends Plugin {
     private view: DailyNoteView;
@@ -44,7 +43,7 @@ export default class DailyNoteViewPlugin extends Plugin {
         this.patchWorkspaceLeaf();
         addIconList();
 
-        this.lastCheckedDay = moment().format("YYYY-MM-DD");
+        this.lastCheckedDay = (moment as any)().format("YYYY-MM-DD");
 
         // Register the up and down navigation extension
         this.settings.useArrowUpOrDownToNavigate &&
@@ -148,7 +147,7 @@ export default class DailyNoteViewPlugin extends Plugin {
 
     async ensureTodaysDailyNoteExists() {
         try {
-            const currentDate = moment();
+            const currentDate = (moment as any)();
             const allDailyNotes = getAllDailyNotes();
             const currentDailyNote = getDailyNote(currentDate, allDailyNotes);
 
@@ -228,7 +227,13 @@ export default class DailyNoteViewPlugin extends Plugin {
                                 (parent as WorkspaceContainer).win
                             )) {
                                 // Use old API here for compat w/0.14.x
-                                if (old.call(this, cb, popover.rootSplit))
+                                if (
+                                    old.call(
+                                        this,
+                                        cb as any,
+                                        popover.rootSplit as any
+                                    )
+                                )
                                     return true;
                             }
                         }
@@ -329,7 +334,7 @@ export default class DailyNoteViewPlugin extends Plugin {
     }
 
     private async checkDayChange(): Promise<void> {
-        const currentDay = moment().format("YYYY-MM-DD");
+        const currentDay = (moment as any)().format("YYYY-MM-DD");
 
         if (currentDay !== this.lastCheckedDay) {
             this.lastCheckedDay = currentDay;

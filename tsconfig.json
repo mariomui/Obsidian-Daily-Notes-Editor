@@ -1,20 +1,21 @@
 {
     "extends": "./.svelte-kit/tsconfig.json",
     "compilerOptions": {
-        "checkJs": true,
+        "strictPropertyInitialization": false,
+        "verbatimModuleSyntax": true,
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
         "skipLibCheck": true,
         "strict": true,
-        "moduleResolution": "bundler",
+        "moduleResolution": "node",
         "baseUrl": ".",
         "allowSyntheticDefaultImports": true,
         "inlineSourceMap": true,
         "inlineSources": true,
         "module": "ESNext",
         "target": "ES6",
-        "allowJs": true,
+        // "allowJs": true,
         "noImplicitAny": false,
         "importHelpers": true,
         "isolatedModules": true,
@@ -24,6 +25,11 @@
             "ES5",
             "ES6",
             "ES7"
+        ],
+        "noImplicitThis": false,
+        "typeRoots": [
+            "node_modules/@types",
+            "src/types"
         ]
     },
     //	"extends": "@tsconfig/svelte/tsconfig.json",
@@ -32,8 +38,11 @@
         "**/*.js",
         "**/*.svelte",
         "**/*.ts",
+        "src/**/*",
+        "../../../../Google Drive/sbrain/neuro-atypical/.obsidian/plugins/dev-daily-notes-editor/main.js"
     ],
     "exclude": [
-        "dist/**/*.*"
+        "dist/**/*.*",
+        "main.js"
     ]
 }
