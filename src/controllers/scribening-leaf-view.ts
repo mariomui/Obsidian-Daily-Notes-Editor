@@ -45,7 +45,7 @@ type ConstructableWorkspaceSplit = new (
     dir: "horizontal" | "vertical"
 ) => WorkspaceSplit;
 
-export function isScribeningNoteLeaf(leaf: WorkspaceLeaf) {
+export function checkIsScribeningNoteLeaf(leaf: WorkspaceLeaf) {
     // Work around missing enhance.js API by checking match condition instead of looking up parent
     return leaf.containerEl.matches(".dn-editor.dn-leaf-view .workspace-leaf");
 }
@@ -143,7 +143,13 @@ export class ScribeningNoteEditor extends nosuper(HP) {
         return this.activeWindows().flatMap(this.popoversForWindow);
     }
 
-    static popoversForWindow(win?: Window) {
+    /**
+     * Returns all `ScribeningNoteEditor` instances in the given window using global popovers
+     *
+     * @param win - The window to search in.
+     * @returns Array of `ScribeningNoteEditor` instances.
+     */
+    static popoversForWindow(win?: Window): ScribeningNoteEditor[] {
         return (
             Array.prototype.slice.call(
                 win?.document?.body.querySelectorAll(".dn-leaf-view") ?? []

@@ -7,16 +7,19 @@ import {
 import type { TimeField } from "@src/types/time";
 import { around } from "monkey-around";
 import {
+    Component,
     moment,
     type OpenViewState,
     Plugin,
     requireApiVersion,
     TFile,
+    TFolder,
     Workspace,
     WorkspaceContainer,
     type WorkspaceItem,
     WorkspaceLeaf,
 } from "obsidian";
+
 import {
     createDailyNote,
     getAllDailyNotes,
@@ -27,7 +30,7 @@ import {
 import "@src/style/index.css";
 import {
     ScribeningNoteEditor,
-    isScribeningNoteLeaf,
+    checkIsScribeningNoteLeaf,
 } from "./controllers/scribening-leaf-view";
 // import { setActiveEditorExt } from "./component/SetActiveEditor";
 // import { addIconList } from "./utils/icon";
@@ -100,25 +103,26 @@ export default class Scribening extends Plugin {
         //     window.setInterval(this.checkDayChange.bind(this), 1000 * 60 * 15)
         // );
 
-        // this.app.workspace.on("file-menu", (menu, file, source, leaf) => {
-        //     if (file instanceof TFolder) {
-        //         for (const item of menu.items) {
-        //             if (
-        //                 item.dom.getAttribute("data-open-daily-note") === "true"
-        //             ) {
-        //                 menu.dom.removeChild(item.dom);
-        //             }
-        //         }
-        //         menu.addItem((item) => {
-        //             item.setIcon("calendar-range");
-        //             item.setTitle("Open daily notes for this folder");
-        //             item.onClick(() => {
-        //                 this.openFolderView(file.path);
-        //             });
-        //             item.dom.setAttribute("data-open-daily-note", "true");
-        //         });
-        //     }
-        // });
+        this.app.workspace.on("file-menu", (menu, file, source, leaf) => {
+            if (file instanceof TFolder) {
+                for (const item of menu.items) {
+                    if (
+                        item.dom.getAttribute("data-open-daily-note") === "true"
+                    ) {
+                        item.dom.remove();
+                    }
+                }
+
+                menu.addItem((item) => {
+                    item.setIcon("calendar-range");
+                    item.setTitle("Open daily notes for this folder");
+                    item.onClick(() => {
+                        this.openFolderView(file.path);
+                    });
+                    item.dom.setAttribute("data-open-daily-note", "true");
+                });
+            }
+        });
     }
 
     onunload() {
@@ -189,29 +193,30 @@ export default class Scribening extends Plugin {
         let layoutChanging = false;
         const uninstaller = around(Workspace.prototype, {
             // somemethod: function somemethod(oldmethod)  { ... }
-            getActiveViewOfType: (oldmethod) =>
-                function (func: any) {
-                    //
-                    const viewInstance = oldmethod.call(this, func);
-                    if (!viewInstance && func?.VIEW_TYPE === "markdown") {
-                        // the current workspace , the current leaf, aka container that houses a view.
-                        const activeLeaf = this.activeLeaf;
+            // getActiveViewOfType: (oldmethod) =>
+            //     function (func: any) {
+            //         //
+            //         const viewInstance = oldmethod.call(this, func);
+            //         // postprocess when the viewInstance is non existent
+            //         if (!viewInstance && func?.VIEW_TYPE === "markdown") {
+            //             // the current workspace , the current leaf, aka container that houses a view.
+            //             const activeLeaf = this.activeLeaf;
 
-                        // if the container, the view inside is my registered viewtype do nothing.
-                        if (activeLeaf?.view instanceof ScribeningNoteView) {
-                            // const editMode = activeLeaf.view.editMode;
+            //             // if the container, the view inside is my registered viewtype do nothing.
+            //             if (activeLeaf?.view instanceof ScribeningNoteView) {
+            //                 // const editMode = activeLeaf.view.editMode;
+            //                 // editMode is a self appointed property pegged to the activeLeaf.
+            //                 return activeLeaf.view["editMode"];
+            //             }
+            //             return viewInstance;
+            //         }
 
-                            return activeLeaf.view.whateveryouwantwhocares;
-                        }
-                        return viewInstance;
-                    }
-
-                    return viewInstance;
-                },
+            //         return viewInstance;
+            //     },
+            // Toggle isLayoutChangeInProgress when Workspace changes layouts
             changeLayout(old) {
                 return async function (workspace: unknown) {
                     layoutChanging = true;
-                    console.log("changing");
                     // changeLayout(workspace: any): Promise<void>;
 
                     try {
@@ -280,23 +285,28 @@ export default class Scribening extends Plugin {
                             }
                         }
                     }
+                    // For some reason when the leaves are all being iterated, don't return a boolean.
                     return false;
                 };
             },
-            setActiveLeaf: (next: any) =>
-                function (e: WorkspaceLeaf, t?: any) {
-                    if ((e as any).parentLeaf) {
-                        (e as any).parentLeaf.activeTime = 1700000000000;
+            // setActiveLeaf: (next: any) =>
+            //     function (leafOrView: WorkspaceLeaf, t?: any) {
+            //         console.log({ t });
+            //         if (leafOrView.parentLeaf) {
+            //             // active Time is an uncontrolled custom data pegged to a foreign body.
+            //             leafOrView.parentLeaf["activeTime"] = 1700000000000;
 
-                        next.call(this, (e as any).parentLeaf, t);
-                        if ((e.view as any).editMode) {
-                            this.activeEditor = e.view;
-                            (e as any).parentLeaf.view.editMode = e.view;
-                        }
-                        return;
-                    }
-                    return next.call(this, e, t);
-                },
+            //             next.call(this, leafOrView.parentLeaf, t);
+            //             // post process if there is a parent leaf.
+            //             if (leafOrView.view["editMode"]) {
+            //                 this.activeEditor = leafOrView.view;
+            //                 leafOrView.parentLeaf.view.setMode["editMode"] =
+            //                     leafOrView.view;
+            //             }
+            //             return;
+            //         }
+            //         return next.call(this, leafOrView, t);
+            //     },
         });
         this.register(uninstaller);
     }
@@ -305,47 +315,53 @@ export default class Scribening extends Plugin {
     patchWorkspaceLeaf() {
         this.register(
             around(WorkspaceLeaf.prototype, {
-                getRoot(old) {
-                    return function () {
-                        const top = old.call(this);
-                        return top?.getRoot === this.getRoot
-                            ? top
-                            : top?.getRoot();
-                    };
-                },
-                setPinned(old) {
-                    return function (pinned: boolean) {
-                        old.call(this, pinned);
-                        if (isScribeningNoteLeaf(this) && !pinned)
-                            this.setPinned(true);
-                    };
-                },
+                // getRoot(old) {
+                //     return function () {
+                //         const top = old.call(this);
+                //         // when is the workspaceitem's getFroot Function ever equal to the leaf's item?
+                //         if (top.getRoot === this.getRoot) {
+                //             console.log("Im equal");
+                //         }
+                //         return top?.getRoot === this.getRoot
+                //             ? top
+                //             : top?.getRoot();
+                //     };
+                // },
+                // setPinned(old) {
+                //     return function (pinned: boolean) {
+                //         old.call(this, pinned);
+                //         if (isScribeningNoteLeaf(this) && !pinned)
+                //             this.setPinned(true);
+                //     };
+                // },
                 openFile(old) {
                     return function (file: TFile, openState?: OpenViewState) {
-                        if (isScribeningNoteLeaf(this)) {
+                        const isRecentFilesPluginEnabled =
+                            this.app.plugins.enabledPlugins.has(
+                                "recent-files-obsidian"
+                            );
+                        // open file happens on any file when you click on the title.
+                        // This code removes QuickSwitcher from recording you if you click on any note that is a scribening note leaf
+                        if (checkIsScribeningNoteLeaf(this)) {
                             setTimeout(
                                 around(Workspace.prototype, {
                                     recordMostRecentOpenedFile(old) {
                                         return function (_file: TFile) {
-                                            // Don't update the quick switcher's recent list
+                                            // if the recorded file is the same as the file , don't record into quickswitcher (native0)
                                             if (_file !== file) {
                                                 return old.call(this, _file);
                                             }
                                         };
                                     },
                                 }),
-                                1
+                                1 // this uninstalls after setTimeout ends
                             );
-                            const recentFiles =
-                                this.app.plugins.plugins[
-                                    "recent-files-obsidian"
-                                ];
-                            if (recentFiles)
+                            if (isRecentFilesPluginEnabled)
                                 setTimeout(
-                                    around(recentFiles, {
+                                    around(isRecentFilesPluginEnabled, {
                                         shouldAddFile(old) {
                                             return function (_file: TFile) {
-                                                // Don't update the Recent Files plugin
+                                                // don't let recent files record
                                                 return (
                                                     _file !== file &&
                                                     old.call(this, _file)
