@@ -47,7 +47,8 @@
         "**/*.svelte",
         "**/*.ts",
         "src/**/*",
-        "utils/*.mts,"
+        "utils/*.mts",
+        "src/**/*"
     ],
     "exclude": [
         "dist/**/*.*",

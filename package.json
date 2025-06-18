@@ -8,7 +8,8 @@
         "lint": "pnpm dlx eslint --fix --ext .ts,.svelte .",
         "dev": "pnpm xlint && vite build --config vite.config.mts --watch --mode development",
         "build": "pnpm dlx svelte-check && vite --config vite.config.mts build --mode production",
-        "version": "node version-bump.mjs && git add manifest.json versions.json"
+        "version": "node version-bump.mjs && git add manifest.json versions.json",
+        "odev": "IS_PROTOTYPING=false vite build --config vite.config.mts --watch --mode development"
     },
     "type": "module",
     "keywords": [],

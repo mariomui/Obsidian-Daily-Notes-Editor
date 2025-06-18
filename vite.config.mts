@@ -9,12 +9,13 @@ import chalk from "chalk";
 import copyNewer from "copy-newer";
 import { ensureFile, pathExists, move } from "fs-extra";
 import autoPreprocess from "svelte-preprocess";
-import { ConfigEnv, Rollup, UserConfig } from "vite";
+import { ConfigEnv, createLogger, Rollup, UserConfig } from "vite";
 import { defineConfig } from "vite";
 import type { PipeConstructor } from "./rollphidian.mts";
 import { Pipe } from "./rollphidian.mts";
 import { RollupLogger } from "./build-utils/RollupLogger.mts";
 import builtins from "builtin-modules";
+import { createReadStream } from "node:fs";
 
 // const prod = process.argv[4] === "production";
 const rollupLogger = new RollupLogger(chalk);
@@ -22,11 +23,31 @@ function manuViteFig(configEnv: ConfigEnv): UserConfig {
     // # CONSTS
     const { mode } = configEnv;
     const Piper = Pipe as unknown as PipeConstructor;
+    const ENV = {
+        DEVELOPMENT: "development",
+        PRODUCTION: "production",
+    };
+
+    const TEST_VAULT_PATH = process.env?.OBSIDIAN_TEST_VAULT;
+
+    // ## DERIVED FROM CONSTS;
+    const isPrototyping = ["true", undefined].includes(
+        process.env?.isPrototyping
+    );
+    const pluginNameChoices = {
+        [ENV.DEVELOPMENT]: require("./manifest.dev.json").id,
+        [ENV.PRODUCTION]: require("./manifest.json").id,
+    };
+    let plugin_name = pluginNameChoices[mode];
 
     // # KNOBS
-    const dist = "dist";
-    // ## FEATURE KNOBS
-    const isPrototyping = true;
+    const dist = "./dist";
+
+    // ## DERIVED FROM KNOBS
+    let out_dir = TEST_VAULT_PATH
+        ? join(TEST_VAULT_PATH, ".obsidian", "plugins", plugin_name)
+        : dist;
+
     const PROTOTYPE_ENTRYPOINT = "./src/main.ts";
     const ORIGINAL_ENTRYPOINT = "./src/dailyNoteViewIndex.ts";
     const entrypoint_path = isPrototyping
@@ -91,35 +112,25 @@ function manuViteFig(configEnv: ConfigEnv): UserConfig {
             },
             // Use root as the output dir
             emptyOutDir: false,
-            outDir: dist,
+            outDir: out_dir,
         },
     };
-    // Use this to interface with rollup plugins because the ophidian paradigm is easier to dev with
-    if (mode === "development") {
-        // grab the plugin name;
-        const { id } = require("./manifest.dev.json");
 
-        let outDir = _userFig.build?.outDir || dist;
-        if (process.env.OBSIDIAN_TEST_VAULT) {
-            outDir = join(
-                process.env.OBSIDIAN_TEST_VAULT,
-                ".obsidian",
-                "plugins",
-                id
-            );
-        }
+    let outDir = _userFig?.build?.outDir || dist;
+    // consider automatically putting a callout in the With Functions so I can pass dist through it.
+    new Piper(_userFig)
+        .withRollupBuildPlugins([
+            CopyManifestToDistPlugin(dist, "manifest.dev.json"),
+        ])
+        .withRollupBuildPlugins([
+            AddHotReloadPlugin(outDir, true),
+            MoveArtifactsUsingPlugin(dist, outDir),
+            RenameFilePlugin(outDir, "manifest.dev.json", "manifest.json", {
+                order: "post",
+            }),
+            // last one here should not be sequential or else there's a waiting sequence
+        ]);
 
-        new Piper(_userFig)
-            .withRollupBuildPlugins([CopyManifestToDistPlugin(dist)])
-            .withRollupBuildPlugins([
-                AddHotReloadPlugin(outDir, true),
-                MoveArtifactsUsingPlugin(dist, outDir),
-                RenameFilePlugin(outDir, "manifest.dev.json", "manifest.json", {
-                    order: "post",
-                }),
-                // last one here should not be sequential or else there's a waiting sequence
-            ]);
-    }
     return _userFig;
 }
 
@@ -221,10 +232,10 @@ function RenameFilePlugin(
  * @param pattern - The glob pattern or filename of the manifest to copy. Defaults to "manifest.dev.json".
  * @returns A Rollup plugin object that performs the copy operation at the end of the build.
  */
-function CopyManifestToDistPlugin(
-    destDir = "./dist",
-    pattern = "manifest.dev.json"
-): Rollup.Plugin {
+function CopyManifestToDistPlugin(destDir = "./dist", pattern): Rollup.Plugin {
+    const progressFig = rollupLogger.progress(
+        `Files matching ${pattern} is copying to ${destDir}`
+    );
     const successFig = rollupLogger.success(
         `Files matching ${pattern} copied to ${destDir}`
     );
@@ -233,6 +244,7 @@ function CopyManifestToDistPlugin(
         closeBundle: {
             sequential: true,
             handler: async function () {
+                this.info(progressFig);
                 await copyNewer(pattern, destDir, {
                     verbose: true,
                     cwd: ".", // grab manifest files from current root directory
@@ -256,14 +268,39 @@ function AddHotReloadPlugin(
     destDir: string,
     isHotReload: boolean = false
 ): Rollup.Plugin {
+    const progressFig = rollupLogger.progress(`Adding hotReload ... `);
+    const successFig = rollupLogger.success(
+        `".hotreload" has been added to ${destDir}`
+    );
+    const outfile = join(destDir, ".hotreload");
     return {
         name: "hotreload",
         closeBundle: {
             sequential: true,
-            handler: async () => {
-                if (isHotReload) {
-                    await ensureFile(`${destDir}/.hotreload`);
-                }
+            handler: async function () {
+                // functions have to be bound to the object that calls handler in order to gain access to the logging function
+                const genWriteHotReload = (async () => {
+                    this.info(progressFig);
+                    await ensureFile(`${outfile}`);
+                    this.info(successFig);
+                }).bind(this);
+                // Run Path Exists First before we run ensureFile
+                const logPathExists = (() => {
+                    readableStream && readableStream.destroy();
+                    this.info(rollupLogger.fail("Path already exists"));
+                }).bind(this);
+
+                const readableStream = createReadStream(outfile, {
+                    encoding: "utf8", // Specify encoding if needed
+                });
+
+                readableStream.once("readable", logPathExists);
+                readableStream.once("error", async function () {
+                    if (isHotReload) {
+                        await genWriteHotReload();
+                    }
+                    readableStream && readableStream.destroy();
+                });
             },
         },
     };

@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import type { Rollup, UserConfig, UserConfigFn } from "vite";
 
 interface Pipe {
@@ -25,6 +26,7 @@ Pipe.prototype.withRollupBuildPlugins = function withRollupBuildPlugins(
         }
         if (Array.isArray(userConfig.build?.rollupOptions?.plugins)) {
             const _plugins = plugins.reduce((chain, plugin: Rollup.Plugin) => {
+                plugin.name = chalk.blue(plugin.name);
                 chain.push(plugin, logRollupPlugin(plugin.name));
                 return chain;
             }, [] as Rollup.Plugin[]);
@@ -45,7 +47,7 @@ function logRollupPlugin(
             if (log.plugin === "plugin_name") {
                 this.info(log);
             }
-            return shouldSilent == false;
+            return shouldSilent === false;
         },
     };
 }
