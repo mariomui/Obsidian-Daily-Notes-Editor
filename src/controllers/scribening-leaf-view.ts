@@ -368,7 +368,7 @@ export class ScribeningNoteEditor extends nosuper(HP) {
         );
 
         if (this.parent) {
-            this.parent.DailyNoteEditor = this;
+            this.parent.ScribeningNoteEditor = this;
         }
 
         // Remove original view header;
