@@ -7,8 +7,6 @@ import {
 import type { TimeField } from "@src/types/time";
 import { around } from "monkey-around";
 import {
-    Component,
-    moment,
     type OpenViewState,
     Plugin,
     requireApiVersion,
@@ -20,11 +18,6 @@ import {
     WorkspaceLeaf,
 } from "obsidian";
 
-import {
-    createDailyNote,
-    getAllDailyNotes,
-    getDailyNote,
-} from "obsidian-daily-notes-interface";
 // import { DAILY_NOTE_VIEW_TYPE, DailyNoteView } from "./dailyNoteView";
 
 import "@src/style/index.css";
@@ -36,9 +29,9 @@ import {
 // import { addIconList } from "./utils/icon";
 
 export default class Scribening extends Plugin {
-    private view: ScribeningNoteView;
+    private view: ScribeningNoteView; // this is always populated with a ScribeningNoteView.
     lastActiveFile: TFile;
-    private lastCheckedDay: string;
+    // private lastCheckedDay: string;
 
     settings: {
         hideFrontmatter: boolean;
@@ -78,10 +71,10 @@ export default class Scribening extends Plugin {
         this.addCommand({
             id: "open-daily-note-editor",
             name: "Open Daily Note Editor",
-            callback: () => this.openDailyNoteEditor(),
+            callback: () => this.openScriveningNoteEditor(),
         });
 
-        // this.initCssRules();
+        this.initCssRules();
 
         // Create daily note and open the Daily Notes Editor on startup if enabled
         // if (this.settings.createAndOpenOnStartup) {
@@ -104,34 +97,47 @@ export default class Scribening extends Plugin {
         // );
 
         this.app.workspace.on("file-menu", (menu, file, source, leaf) => {
+            const toRemoves: any[] = [];
             if (file instanceof TFolder) {
+                // item must be remembered so that the onClick can be rewritten.
+                // This is especially on Hotreload to avoid multiple menuItems being set.
                 for (const item of menu.items) {
-                    if (
-                        item.dom.getAttribute("data-open-daily-note") === "true"
-                    ) {
-                        item.dom.remove();
+                    const isItemPreviouslyCreated =
+                        item.dom.getAttribute("data-open-daily-note") ===
+                        "true";
+                    if (isItemPreviouslyCreated) {
+                        toRemoves.push(item);
                     }
                 }
-
-                menu.addItem((item) => {
-                    item.setIcon("calendar-range");
-                    item.setTitle("Open daily notes for this folder");
-                    item.onClick(() => {
+                if (toRemoves.length === 0) {
+                    menu.addItem((item) => {
+                        item.setIcon("briefcase");
+                        item.setTitle("Open Scribening View");
+                        item.onClick(() => {
+                            this.openFolderView(file.path);
+                        });
+                        item.dom.setAttribute("data-open-daily-note", "true");
+                    });
+                }
+                for (const menuItem of toRemoves) {
+                    menuItem.onClick(() => {
+                        menuItem.setIcon("briefcase");
+                        menuItem.setTitle("Open Scribening View");
                         this.openFolderView(file.path);
                     });
-                    item.dom.setAttribute("data-open-daily-note", "true");
-                });
+                }
             }
         });
     }
 
     onunload() {
         this.app.workspace.detachLeavesOfType(SCRIBENING_NOTE_VIEW_TYPE);
+
         // document.body.toggleClass("daily-notes-hide-frontmatter", false);
         // document.body.toggleClass("daily-notes-hide-backlinks", false);
     }
 
-    async openDailyNoteEditor() {
+    async openScriveningNoteEditor() {
         const workspace = this.app.workspace;
         const leaf = workspace.getLeaf(true);
         await leaf.setViewState({ type: SCRIBENING_NOTE_VIEW_TYPE });
@@ -140,43 +146,64 @@ export default class Scribening extends Plugin {
 
     async openFolderView(folderPath: string, timeField: TimeField = "mtime") {
         const workspace = this.app.workspace;
+        // create new leaf
+        // ? Why is this leaf Scribening Note after the fact?
         const leaf = workspace.getLeaf(true);
+        // this leaf automatically becomes a SCRIBENING NOTE VIEW LEAF
+
         await leaf.setViewState({ type: SCRIBENING_NOTE_VIEW_TYPE });
 
+        // this.app.workspace.getActiveViewOfType(
+        //     MarkdownView as unknown as new (...args: any[]) => View
+        // );
+
+        // Toggle the auto reveal off when i open up a folderview
+        const fileExplorerView = workspace
+            ?.getLeavesOfType("file-explorer")
+            .at(0)?.view;
+        if (fileExplorerView) {
+            const prevViewState = fileExplorerView.getState();
+            const prevAutoRevealState = prevViewState.autoReveal;
+            fileExplorerView["setAutoReveal"](false);
+
+            // TODO save the original state of autoreveal to revert it back when view.onClose
+            // fileExplorerView["onToggleAutoReveal"]();
+        }
+
         // Get the view and set the selection mode to folder
+        // prep the view;
         const view = leaf.view as ScribeningNoteView;
         view.setSelectionMode("folder", folderPath);
         view.setTimeField(timeField);
-
         workspace.revealLeaf(leaf);
     }
 
-    async openTagView(tagName: string, timeField: TimeField = "mtime") {
-        const workspace = this.app.workspace;
-        const leaf = workspace.getLeaf(true);
-        await leaf.setViewState({ type: SCRIBENING_NOTE_VIEW_TYPE });
+    // async openTagView(tagName: string, timeField: TimeField = "mtime") {
+    //     const workspace = this.app.workspace;
+    //     const leaf = workspace.getLeaf(true);
+    //     await leaf.setViewState({ type: SCRIBENING_NOTE_VIEW_TYPE });
 
-        // Get the view and set the selection mode to tag
-        const view = leaf.view as ScribeningNoteView;
-        view.setSelectionMode("tag", tagName);
-        view.setTimeField(timeField);
+    //     // Get the view and set the selection mode to tag
+    //     const view = leaf.view as ScribeningNoteView;
+    //     view.setSelectionMode("tag", tagName);
+    //     view.setTimeField(timeField);
 
-        workspace.revealLeaf(leaf);
-    }
+    //     workspace.revealLeaf(leaf);
+    // }
 
-    async ensureTodaysDailyNoteExists() {
-        try {
-            const currentDate = (moment as any)();
-            const allDailyNotes = getAllDailyNotes();
-            const currentDailyNote = getDailyNote(currentDate, allDailyNotes);
+    // async ensureTodaysDailyNoteExists() {
+    //     try {
+    //         const currentDate = (moment as any)();
+    //         const allDailyNotes = getAllDailyNotes();
+    //         const currentDailyNote = getDailyNote(currentDate, allDailyNotes);
 
-            if (!currentDailyNote) {
-                await createDailyNote(currentDate);
-            }
-        } catch (error) {
-            console.error("Failed to create daily note:", error);
-        }
-    }
+    //         if (!currentDailyNote) {
+    //             await createDailyNote(currentDate);
+    //         }
+    //     } catch (error) {
+    //         console.error("Failed to create daily note:", error);
+    //     }
+    // }
 
     initCssRules() {
         document.body.toggleClass(
@@ -239,16 +266,16 @@ export default class Scribening extends Plugin {
                     // Handle old/new API parameter swap
                     // # Handle old/new API parameter swap
                     // ## workspace.getLeavesByType uses the arity1 signature.
-                    const isCalledByGetLeavesByType =
-                        typeof arg1 === "function";
+                    const checkIsArgAFunction = (arg) =>
+                        typeof arg === "function";
 
                     const cb: leafIterator = (
-                        isCalledByGetLeavesByType ? arg1 : arg2
+                        checkIsArgAFunction(arg1) ? arg1 : arg2
                     ) as leafIterator;
                     // ## if arg1 a function, then the parent is arg2 (aka undefined)
                     // ## if arg1 is an object then the parent is arg1 (aka parent of the container type object)
                     const parent: WorkspaceItem = (
-                        isCalledByGetLeavesByType ? arg2 : arg1
+                        checkIsArgAFunction(arg1) ? arg2 : arg1
                     ) as WorkspaceItem;
 
                     // iterateAllLeaves and iterateRootLeaves call iterateLeaves with an object in the first parameter. the arg1/parent then has a value.
@@ -260,6 +287,9 @@ export default class Scribening extends Plugin {
                     // ### layout is changing
                     if (!parent) return false;
                     if (layoutChanging) return false; // Don't let HEs close during workspace change
+
+                    // ## arg1 Exists, ar2 Exists -> continue
+                    // ## arg1 is not a function, and arg 2 is not a function -> continue
 
                     // 0.14.x doesn't have WorkspaceContainer; this can just be an instanceof check once 15.x is mandatory:
                     const isApiHigherOrEqualToPatch15 =
@@ -280,8 +310,10 @@ export default class Scribening extends Plugin {
                                         cb as any,
                                         popover.rootSplit as any
                                     )
-                                )
+                                ) {
+                                    // if api is cold, call iterateLeaves with cb as the first argument, and parent.rootsplit as the 2nd argument. Too much research to understand why.
                                     return true;
+                                }
                             }
                         }
                     }
@@ -318,7 +350,7 @@ export default class Scribening extends Plugin {
                 // getRoot(old) {
                 //     return function () {
                 //         const top = old.call(this);
-                //         // when is the workspaceitem's getFroot Function ever equal to the leaf's item?
+                //         // when is the workspaceitem's getRoot property equal to the leaf's item?
                 //         if (top.getRoot === this.getRoot) {
                 //             console.log("Im equal");
                 //         }
@@ -327,13 +359,14 @@ export default class Scribening extends Plugin {
                 //             : top?.getRoot();
                 //     };
                 // },
-                // setPinned(old) {
-                //     return function (pinned: boolean) {
-                //         old.call(this, pinned);
-                //         if (isScribeningNoteLeaf(this) && !pinned)
-                //             this.setPinned(true);
-                //     };
-                // },
+                setPinned(old) {
+                    // report to the plugin when the Leaf pins itself
+                    return function (pinned: boolean) {
+                        old.call(this, pinned);
+                        if (checkIsScribeningNoteLeaf(this) && !pinned)
+                            this.setPinned(true);
+                    };
+                },
                 openFile(old) {
                     return function (file: TFile, openState?: OpenViewState) {
                         const isRecentFilesPluginEnabled =
