@@ -429,10 +429,10 @@ export class FileManager {
             this.allFiles.push(file);
 
             // Sort files by the specified time field
-            this.allFiles = this.sortFilesByTimeField(
-                this.allFiles,
-                this.options.timeField
-            );
+            // this.allFiles = this.sortFilesByTimeField(
+            //     this.allFiles,
+            //     this.options.timeField
+            // );
 
             // Update filtered files
             this.filterFilesByRange();

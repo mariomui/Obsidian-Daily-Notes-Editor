@@ -12,6 +12,7 @@ import {
     Modal,
     type App,
     ButtonComponent,
+    TFolder,
 } from "obsidian";
 
 export const SCRIBENING_NOTE_VIEW_TYPE = "SCRIBENING-NOTE-VIEW";
@@ -20,6 +21,14 @@ export function isEmebeddedLeaf(leaf: WorkspaceLeaf) {
     // Work around missing enhance.js API by checking match condition instead of looking up parent
     return (leaf as any).containerEl.matches(".dn-leaf-view");
 }
+
+type ScribeningNoteViewState = {
+    customRange: { start: Date; end: Date } | null;
+    selectedDaysRange: TimeRange;
+    selectionMode: "daily" | "folder" | "tag";
+    target: string;
+    timeField: TimeField;
+};
 
 export class ScribeningNoteView extends ItemView {
     view: ScribeningEditorView;
@@ -52,14 +61,18 @@ export class ScribeningNoteView extends ItemView {
     }
 
     getDisplayText(): string {
-        if (this.selectionMode === "daily") {
-            return "Daily Notes";
-        } else if (this.selectionMode === "folder") {
-            return `Folder: ${this.target}`;
-        } else if (this.selectionMode === "tag") {
-            return `Tag: ${this.target}`;
-        }
-        return "Notes";
+        const abf = this.app.vault.getAbstractFileByPath(this.target);
+        const isTargetTFolder = abf instanceof TFolder;
+        const folder_name = isTargetTFolder ? abf.name : "";
+        // the first daily notes is used. There's not refresh of this.
+        const choices = {
+            daily: "Daily Notes",
+            folder: `Folder: ${folder_name}`,
+            tag: `Tag: ${this.target}`,
+        };
+        const selection_mode = this.selectionMode;
+
+        return choices[selection_mode] || "Notes";
     }
 
     getIcon(): string {
@@ -190,7 +203,7 @@ export class ScribeningNoteView extends ItemView {
     }
 
     openDailyNoteEditor() {
-        this.plugin.openDailyNoteEditor();
+        this.plugin.openScriveningNoteEditor();
     }
 
     async onOpen(): Promise<void> {
