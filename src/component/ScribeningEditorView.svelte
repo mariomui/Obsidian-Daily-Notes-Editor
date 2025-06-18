@@ -90,7 +90,7 @@
         
         // Set the base title
         let titleText = '';
-        
+
         // Add range information based on the current selection mode and range
         if (selectionMode === "daily" && selectedRange !== 'all') {
             if (selectedRange === 'custom' && customRange) {
@@ -255,7 +255,7 @@
     
     // Handle note visibility change
     function handleNoteVisibilityChange(file: TFile, isVisible: boolean) {
-        console.log("inview", isVisible)
+        // console.log("inview", isVisible)
         if (isVisible) {
             visibleNotes.add(file.path);
         } else {

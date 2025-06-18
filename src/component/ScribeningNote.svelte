@@ -32,7 +32,7 @@
         }
     });
 
-    console.log(shouldRender, rendered)
+    // console.log(shouldRender, rendered)
 
     $: if (editorEl && shouldRender && !rendered) {
         showEditor();
