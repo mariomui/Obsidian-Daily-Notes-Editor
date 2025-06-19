@@ -16,6 +16,7 @@ import { Pipe } from "./rollphidian.mts";
 import { RollupLogger } from "./build-utils/RollupLogger.mts";
 import builtins from "builtin-modules";
 import { createReadStream } from "node:fs";
+import type { HookOptions } from "./.svelte-kit/build-types/rollphidian/$types";
 
 // const prod = process.argv[4] === "production";
 const rollupLogger = new RollupLogger(chalk);
@@ -74,6 +75,18 @@ function manuViteFig(configEnv: ConfigEnv): UserConfig {
             lib: {
                 entry: new URL(entrypoint_path, import.meta.url).pathname,
                 formats: ["cjs"],
+            },
+            cssCodeSplit: false,
+            watch: {
+                // Only rebuild when these kinds of changes happen
+                exclude: [
+                    "node_modules/**",
+                    ".git/**",
+                    ".obsidian/**",
+                    "dist/**",
+                ],
+                include: ["src/**"],
+                // clearScreen: false, // optional: stops terminal clearing on rebuild
             },
             rollupOptions: {
                 plugins: [
@@ -171,11 +184,6 @@ function manuTerserPlugin(
     });
 }
 
-type HookOptions<T = {}> = Omit<
-    Extract<Rollup.ObjectHook<any>, { handler: any }>,
-    "handler"
-> &
-    T;
 /**
  * Vite plugin to rename a file after the build process completes.
  *
