@@ -4,7 +4,7 @@
 // And also monkey around the Obsidian original method.
 
 import type DailyNoteViewPlugin from "@src/dailyNoteViewIndex";
-import { genId } from "@utils/utils";
+import { genId } from "@src/utils";
 import {
     Component,
     type EphemeralState,
