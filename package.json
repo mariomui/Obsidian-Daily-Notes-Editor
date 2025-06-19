@@ -15,6 +15,9 @@
     "keywords": [],
     "author": "Quorafind",
     "devDependencies": {
+        "@codemirror/language": "^6.11.1",
+        "@codemirror/state": "^6.5.2",
+        "@codemirror/view": "^6.36.3",
         "@eslint/eslintrc": "^3.3.1",
         "@eslint/js": "^9.29.0",
         "@rollup/plugin-node-resolve": "^15.2.3",
@@ -46,8 +49,6 @@
         "vite": "link:@sveltjs/kit/vite"
     },
     "dependencies": {
-        "@codemirror/state": "^6.5.2",
-        "@codemirror/view": "^6.36.3",
         "@sveltejs/kit": "^2.21.5",
         "monkey-around": "^2.3.0"
     },
