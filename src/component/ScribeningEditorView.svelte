@@ -92,6 +92,7 @@
         let titleText = '';
 
         // Add range information based on the current selection mode and range
+
         if (selectionMode === "daily" && selectedRange !== 'all') {
             if (selectedRange === 'custom' && customRange) {
                 titleText = `Showing notes from: ${(moment as any)(customRange.start).format('YYYY-MM-DD')} to ${(moment as any)(customRange.end).format('YYYY-MM-DD')}`;
@@ -195,34 +196,35 @@
     }
 
     export function check() {
+        console.log("checking if there's a new daily note and it'll add it")
         // Check if there's a new daily note (e.g., after day change)
-        const hadDailyNote = fileManager.hasCurrentDayNote();
-        fileManager.checkDailyNote();
-        const hasDailyNote = fileManager.hasCurrentDayNote();
+        // const hadDailyNote = fileManager.hasCurrentDayNote();
+        // fileManager.checkDailyNote();
+        // const hasDailyNote = fileManager.hasCurrentDayNote();
         
-        // If the daily note status changed (e.g., we just crossed midnight),
-        // refresh the file list to ensure we show the current day's daily note
-        if (hadDailyNote !== hasDailyNote || 
-            (selectionMode === "daily" && selectedRange !== "all")) {
-            // Get updated filtered files
-            filteredFiles = fileManager.getFilteredFiles();
+        // // If the daily note status changed (e.g., we just crossed midnight),
+        // // refresh the file list to ensure we show the current day's daily note
+        // if (hadDailyNote !== hasDailyNote || 
+        //     (selectionMode === "daily" && selectedRange !== "all")) {
+        //     // Get updated filtered files
+        //     filteredFiles = fileManager.getFilteredFiles();
             
-            // Reset rendered files and start filling viewport again if in daily mode
-            if (selectionMode === "daily") {
-                renderedFiles = [];
-                visibleNotes.clear();
-                hasMore = filteredFiles.length > 0;
-                firstLoaded = true;
-                startFillViewport();
-            }
-        }
+        //     // Reset rendered files and start filling viewport again if in daily mode
+        //     if (selectionMode === "daily") {
+        //         renderedFiles = [];
+        //         visibleNotes.clear();
+        //         hasMore = filteredFiles.length > 0;
+        //         firstLoaded = true;
+        //         startFillViewport();
+        //     }
+        // }
     }
+
 
     export function fileCreate(file: TFile) {
         fileManager.fileCreate(file);
-        
         // Update the rendered files if needed
-        if (selectionMode === "daily") {
+        if (selectionMode === "folder") {
             // For daily notes, we need to check if the file should be added to the rendered files
             const filteredFiles = fileManager.getFilteredFiles();
             if (filteredFiles.some(f => f.basename === file.basename) && 
@@ -232,10 +234,12 @@
                 visibleNotes.add(file.path);
                 visibleNotes = visibleNotes;
             }
-        } else {
+            return;
+        } 
+
             // For folder and tag modes, we can simply update the rendered files
-            renderedFiles = fileManager.getFilteredFiles().slice(0, renderedFiles.length);
-        }
+        renderedFiles = fileManager.getFilteredFiles().slice(0, renderedFiles.length);
+
     }
 
     export function fileDelete(file: TFile) {

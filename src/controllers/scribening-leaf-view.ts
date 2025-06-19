@@ -6,7 +6,7 @@
 import type DailyNoteViewPlugin from "@src/dailyNoteViewIndex";
 import type ScribeningPlugin from "@src/main";
 
-import { genId } from "@utils/utils";
+import { genId } from "@src/utils";
 import {
     Component,
     type EphemeralState,

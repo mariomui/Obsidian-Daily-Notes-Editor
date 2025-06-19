@@ -1,7 +1,8 @@
-// import DailyNoteEditorView from "@src/component/DailyNoteEditorView.svelte";
+// This view is registersed in the plugin. When we register a factory function, that function utilizes this viewcontroller to craft the instance
 import ScribeningEditorView from "@src/component/ScribeningEditorView.svelte";
 import ScribeningPlugin from "@src/main";
 import type { TimeRange, TimeField } from "@src/types/time";
+import { getBasenameOfFolderPath } from "@src/utils";
 import {
     type WorkspaceLeaf,
     ItemView,
@@ -12,33 +13,40 @@ import {
     Modal,
     type App,
     ButtonComponent,
-    TFolder,
 } from "obsidian";
-
-export const SCRIBENING_NOTE_VIEW_TYPE = "SCRIBENING-NOTE-VIEW";
+import {
+    SCRIBENING_NOTE_VIEW_TYPE,
+    SELECTION_MODES,
+    SORT_BYS,
+} from "./ScribeningNoteView.c";
+import type { SelectionModeValue } from "./ScribeningNoteView.t";
 
 export function isEmebeddedLeaf(leaf: WorkspaceLeaf) {
     // Work around missing enhance.js API by checking match condition instead of looking up parent
     return (leaf as any).containerEl.matches(".dn-leaf-view");
 }
 
-type ScribeningNoteViewState = {
-    customRange: { start: Date; end: Date } | null;
-    selectedDaysRange: TimeRange;
-    selectionMode: "daily" | "folder" | "tag";
-    target: string;
-    timeField: TimeField;
-};
+type ScribeningNoteViewState =
+    | {
+          customRange: { start: Date; end: Date } | null;
+          selectedDaysRange: TimeRange;
+          selectionMode: SelectionModeValue;
+          target: string;
+          timeField: TimeField;
+          selectedRange?: TimeRange;
+      }
+    | Record<string, unknown>;
 
+type SortBysValue = (typeof SORT_BYS)[keyof typeof SORT_BYS];
 export class ScribeningNoteView extends ItemView {
-    view: ScribeningEditorView;
+    view: ScribeningEditorView; // this is the svelte file
     plugin: ScribeningPlugin;
     scope: Scope; // For keyboard shortcuts
 
     selectedDaysRange: TimeRange = "all";
-    selectionMode: "daily" | "folder" | "tag" = "daily";
+    selectionMode: SelectionModeValue = "daily";
     target: string = "";
-    timeField: TimeField = "mtime";
+    timeField: SortBysValue = "name";
 
     customRange: {
         start: Date;
@@ -61,36 +69,42 @@ export class ScribeningNoteView extends ItemView {
     }
 
     getDisplayText(): string {
-        const abf = this.app.vault.getAbstractFileByPath(this.target);
-        const isTargetTFolder = abf instanceof TFolder;
-        const folder_name = isTargetTFolder ? abf.name : "";
+        // https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines#Prefer+the+Vault+API+over+the+Adapter+API The tempation to use basename path parse is great. Don't do it.
+        const folder_name = getBasenameOfFolderPath(
+            this.app.vault,
+            this.target
+        );
         // the first daily notes is used. There's not refresh of this.
-        const choices = {
-            daily: "Daily Notes",
-            folder: `Folder: ${folder_name}`,
-            tag: `Tag: ${this.target}`,
+        const choices: Record<SelectionModeValue, string> = {
+            [SELECTION_MODES.DAILY]: "Daily Notes",
+            [SELECTION_MODES.FOLDER]: `Folder: ${folder_name}`,
+            [SELECTION_MODES.TAG]: `Tag: ${this.target}`,
         };
-        const selection_mode = this.selectionMode;
 
+        const selection_mode = this.selectionMode;
         return choices[selection_mode] || "Notes";
     }
 
     getIcon(): string {
-        if (this.selectionMode === "daily") {
-            return "calendar";
-        } else if (this.selectionMode === "folder") {
-            return "folder";
-        } else if (this.selectionMode === "tag") {
-            return "tag";
-        }
-        return "document";
+        const choices: Record<SelectionModeValue, string> = {
+            [SELECTION_MODES.DAILY]: "calendar",
+            [SELECTION_MODES.FOLDER]: `folder`,
+            [SELECTION_MODES.TAG]: `tag`,
+        };
+
+        const selection_mode = this.selectionMode;
+        return choices[selection_mode] || "document";
     }
 
-    onFileCreate = (file: TAbstractFile) => {
+    handleFileCreate = (file: TAbstractFile) => {
+        console.log(
+            "on open, this will be called whenever i create a new file"
+        );
+        // view is ScribeningEditorView
         if (file instanceof TFile) this.view.fileCreate(file);
     };
 
-    onFileDelete = (file: TAbstractFile) => {
+    handleFileDelete = (file: TAbstractFile) => {
         if (file instanceof TFile) this.view.fileDelete(file);
     };
 
@@ -138,8 +152,8 @@ export class ScribeningNoteView extends ItemView {
         }
     }
 
-    getState(): Record<string, unknown> {
-        const state = super.getState();
+    getState(): ScribeningNoteViewState {
+        const state: ScribeningNoteViewState = super.getState();
 
         return {
             ...state,
@@ -156,9 +170,9 @@ export class ScribeningNoteView extends ItemView {
         // Handle our custom state properties if they exist
         if (state && typeof state === "object" && !this.view) {
             const customState = state as {
-                selectionMode?: "daily" | "folder" | "tag";
+                selectionMode?: SelectionModeValue;
                 target?: string;
-                timeField?: TimeField;
+                timeField?: SortBysValue;
                 selectedRange?: TimeRange;
                 customRange?: { start: Date; end: Date } | null;
             };
@@ -172,6 +186,7 @@ export class ScribeningNoteView extends ItemView {
             if (customState.customRange)
                 this.customRange = customState.customRange;
 
+            // This is the render function. The whole point is to pass the itemview's content el to the Svelte File so that it can mount it.
             this.view = new ScribeningEditorView({
                 target: this.contentEl,
                 props: {
@@ -184,14 +199,20 @@ export class ScribeningNoteView extends ItemView {
                     timeField: this.timeField,
                 },
             });
+            // this.counter = mount(Counter, {
+            //   target: this.contentEl,
+            //   props: {
+            //     startCount: 5,
+            //   }
+            // });
 
             this.app.workspace.onLayoutReady(this.view.tick.bind(this));
 
-            this.registerInterval(
-                window.setInterval(async () => {
-                    this.view.check();
-                }, 1000 * 60 * 60)
-            );
+            // this.registerInterval(
+            //     window.setInterval(async () => {
+            //         this.view.check();
+            //     }, 1000 * 60 * 60)
+            // );
         }
     }
 
@@ -237,73 +258,70 @@ export class ScribeningNoteView extends ItemView {
         });
 
         // Add action for selecting view mode
-        this.addAction("layers-2", "Select view mode", (e) => {
-            const menu = new Menu();
+        // this.addAction("layers-2", "Select view mode", (e) => {
+        //     const menu = new Menu();
 
-            // Add mode selection options
-            const addModeOption = (
-                title: string,
-                mode: "daily" | "folder" | "tag"
-            ) => {
-                menu.addItem((item) => {
-                    item.setTitle(title);
-                    item.setChecked(
-                        this.selectionMode === mode && !this.target
-                    );
-                    item.onClick(() => {
-                        if (mode === "daily") {
-                            this.setSelectionMode(mode);
-                        } else {
-                            // For folder and tag modes, we need to prompt for the target
-                            const modal = new SelectTargetModal(
-                                this.plugin.app,
-                                mode,
-                                (target: string) => {
-                                    this.setSelectionMode(mode, target);
-                                    // Save this selection as a preset
-                                    this.saveCurrentSelectionAsPreset();
-                                }
-                            );
-                            modal.open();
-                        }
-                    });
-                });
-            };
+        //     // Add mode selection options
+        //     const addModeOption = (title: string, mode: SelectionModeValue) => {
+        //         menu.addItem((item) => {
+        //             item.setTitle(title);
+        //             item.setChecked(
+        //                 this.selectionMode === mode && !this.target
+        //             );
+        //             item.onClick(() => {
+        //                 if (mode === "daily") {
+        //                     this.setSelectionMode(mode);
+        //                 } else {
+        //                     // For folder and tag modes, we need to prompt for the target
+        //                     const modal = new SelectTargetModal(
+        //                         this.plugin.app,
+        //                         mode,
+        //                         (target: string) => {
+        //                             this.setSelectionMode(mode, target);
+        //                             // Save this selection as a preset
+        //                             this.saveCurrentSelectionAsPreset();
+        //                         }
+        //                     );
+        //                     modal.open();
+        //                 }
+        //             });
+        //         });
+        //     };
 
-            addModeOption("Daily Notes", "daily");
-            addModeOption("Folder", "folder");
-            addModeOption("Tag", "tag");
+        // addModeOption("Daily Notes", "daily");
+        // addModeOption("Folder", "folder");
+        // addModeOption("Tag", "tag");
 
-            // Add presets if they exist
-            if (this.plugin.settings.preset.length > 0) {
-                menu.addSeparator();
-                menu.addItem((item) => {
-                    item.setTitle("Saved Presets");
-                    item.setDisabled(true);
-                });
+        // Add presets if they exist
+        // if (this.plugin.settings.preset.length > 0) {
+        //     menu.addSeparator();
+        //     menu.addItem((item) => {
+        //         item.setTitle("Saved Presets");
+        //         item.setDisabled(true);
+        //     });
 
-                // Add each preset
-                for (const preset of this.plugin.settings.preset) {
-                    const title =
-                        preset.type === "folder"
-                            ? `Folder: ${preset.target}`
-                            : `Tag: ${preset.target}`;
+        //     // Add each preset
+        //     for (const preset of this.plugin.settings.preset) {
+        //         const title =
+        //             preset.type === "folder"
+        //                 ? `Folder: ${preset.target}`
+        //                 : `Tag: ${preset.target}`;
 
-                    menu.addItem((item) => {
-                        item.setTitle(title);
-                        item.setChecked(
-                            this.selectionMode === preset.type &&
-                                this.target === preset.target
-                        );
-                        item.onClick(() => {
-                            this.setSelectionMode(preset.type, preset.target);
-                        });
-                    });
-                }
-            }
+        //         menu.addItem((item) => {
+        //             item.setTitle(title);
+        //             item.setChecked(
+        //                 this.selectionMode === preset.type &&
+        //                     this.target === preset.target
+        //             );
+        //             item.onClick(() => {
+        //                 this.setSelectionMode(preset.type, preset.target);
+        //             });
+        //         });
+        //     }
+        // }
 
-            menu.showAtMouseEvent(e);
-        });
+        // menu.showAtMouseEvent(e);
+        // });
 
         // Add "Save as Preset" button when in folder or tag mode
         // this.addAction("bookmark", "Save as preset", (e) => {
@@ -317,44 +335,44 @@ export class ScribeningNoteView extends ItemView {
 
         // Add action for selecting time field (for folder and tag modes)
 
-        this.addAction("calendar-range", "Select date range", (e) => {
-            const menu = new Menu();
-            // Add range selection options
-            const addRangeOption = (title: string, range: TimeRange) => {
-                menu.addItem((item) => {
-                    item.setTitle(title);
-                    item.setChecked(this.selectedDaysRange === range);
-                    item.onClick(() => {
-                        this.setSelectedRange(range);
-                    });
-                });
-            };
+        // this.addAction("calendar-range", "Select date range", (e) => {
+        //     const menu = new Menu();
+        //     // Add range selection options
+        //     const addRangeOption = (title: string, range: TimeRange) => {
+        //         menu.addItem((item) => {
+        //             item.setTitle(title);
+        //             item.setChecked(this.selectedDaysRange === range);
+        //             item.onClick(() => {
+        //                 this.setSelectedRange(range);
+        //             });
+        //         });
+        //     };
 
-            addRangeOption("All Notes", "all");
-            addRangeOption("This Week", "week");
-            addRangeOption("This Month", "month");
-            addRangeOption("This Year", "year");
-            addRangeOption("Last Week", "last-week");
-            addRangeOption("Last Month", "last-month");
-            addRangeOption("Last Year", "last-year");
-            addRangeOption("This Quarter", "quarter");
-            addRangeOption("Last Quarter", "last-quarter");
+        //     addRangeOption("All Notes", "all");
+        //     addRangeOption("This Week", "week");
+        //     addRangeOption("This Month", "month");
+        //     addRangeOption("This Year", "year");
+        //     addRangeOption("Last Week", "last-week");
+        //     addRangeOption("Last Month", "last-month");
+        //     addRangeOption("Last Year", "last-year");
+        //     addRangeOption("This Quarter", "quarter");
+        //     addRangeOption("Last Quarter", "last-quarter");
 
-            menu.addSeparator();
-            menu.addItem((item) => {
-                item.setTitle("Custom Date Range");
-                item.setChecked(this.selectedDaysRange === "custom");
-                item.onClick(() => {
-                    const modal = new CustomRangeModal(this.app, (range) => {
-                        this.customRange = range;
-                        this.setSelectedRange("custom");
-                    });
-                    modal.open();
-                });
-            });
+        //     menu.addSeparator();
+        //     menu.addItem((item) => {
+        //         item.setTitle("Custom Date Range");
+        //         item.setChecked(this.selectedDaysRange === "custom");
+        //         item.onClick(() => {
+        //             const modal = new CustomRangeModal(this.app, (range) => {
+        //                 this.customRange = range;
+        //                 this.setSelectedRange("custom");
+        //             });
+        //             modal.open();
+        //         });
+        //     });
 
-            menu.showAtMouseEvent(e as MouseEvent);
-        });
+        //     menu.showAtMouseEvent(e as MouseEvent);
+        // });
 
         this.addAction("refresh", "Refresh", () => {
             if (this.view) {
@@ -372,8 +390,8 @@ export class ScribeningNoteView extends ItemView {
             }
         });
 
-        this.app.vault.on("create", this.onFileCreate);
-        this.app.vault.on("delete", this.onFileDelete);
+        this.app.vault.on("create", this.handleFileCreate);
+        this.app.vault.on("delete", this.handleFileDelete);
     }
 
     onPaneMenu(

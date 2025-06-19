@@ -1,8 +1,6 @@
 // import { createUpDownNavigationExtension } from "@src/lib/UpAndDownNavigate";
-import {
-    ScribeningNoteView,
-    SCRIBENING_NOTE_VIEW_TYPE,
-} from "@src/controllers/ScribeningNoteView";
+import { ScribeningNoteView } from "@src/controllers/ScribeningNoteView";
+import { SCRIBENING_NOTE_VIEW_TYPE } from "./controllers/ScribeningNoteView.c";
 
 import type { TimeField } from "@src/types/time";
 import { around } from "monkey-around";
@@ -14,7 +12,7 @@ import {
     TFolder,
     Workspace,
     WorkspaceContainer,
-    type WorkspaceItem,
+    WorkspaceItem,
     WorkspaceLeaf,
 } from "obsidian";
 
@@ -25,6 +23,11 @@ import {
     ScribeningNoteEditor,
     checkIsScribeningNoteLeaf,
 } from "./controllers/scribening-leaf-view";
+import {
+    // emojiListField,
+    every250WordsPlugin,
+    // panelExtension,
+} from "./lib/HighlightPlugin.cm";
 // import { setActiveEditorExt } from "./component/SetActiveEditor";
 // import { addIconList } from "./utils/icon";
 
@@ -41,9 +44,14 @@ export default class Scribening extends Plugin {
         preset: any[];
     };
 
+    experimentWithCM() {
+        this.registerEditorExtension([every250WordsPlugin]);
+    }
     async onload() {
         // load data into data.json
         await this.loadSettings();
+
+        this.experimentWithCM();
 
         this.patchWorkspace();
         this.patchWorkspaceLeaf();
@@ -347,18 +355,36 @@ export default class Scribening extends Plugin {
     patchWorkspaceLeaf() {
         this.register(
             around(WorkspaceLeaf.prototype, {
-                // getRoot(old) {
-                //     return function () {
-                //         const top = old.call(this);
-                //         // when is the workspaceitem's getRoot property equal to the leaf's item?
-                //         if (top.getRoot === this.getRoot) {
-                //             console.log("Im equal");
-                //         }
-                //         return top?.getRoot === this.getRoot
-                //             ? top
-                //             : top?.getRoot();
-                //     };
-                // },
+                // This allows the new leaf to obtain the ability to get a Reading View.
+                getRoot(old) {
+                    return function () {
+                        // a leaf has a view.
+                        // this leaf is SNV.
+                        // the SNV is an item view
+                        const workspaceItem = old.call(this);
+
+                        // getMarkdownFiles or getFiles Both call getRoot per file.
+                        // getRoot returns a workspaceItem
+                        // check if the which workspaceItem is the one that belongs to the folder I just clicked.
+                        const isWorkspaceItemGetRootMatchCurrentLeafRoot =
+                            workspaceItem?.getRoot === this.getRoot;
+
+                        if (
+                            isWorkspaceItemGetRootMatchCurrentLeafRoot === true
+                        ) {
+                            console.log({ workspaceItem }, "matched");
+                            return workspaceItem;
+                        }
+                        if (
+                            isWorkspaceItemGetRootMatchCurrentLeafRoot === false
+                        ) {
+                            const root = workspaceItem?.getRoot();
+                            // this actively
+                            return root;
+                        }
+                        return workspaceItem;
+                    };
+                },
                 setPinned(old) {
                     // report to the plugin when the Leaf pins itself
                     return function (pinned: boolean) {
