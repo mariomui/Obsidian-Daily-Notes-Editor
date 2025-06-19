@@ -217,6 +217,13 @@ declare module "obsidian" {
 
     interface Workspace {
         floatingSplit: any;
+        on(
+            name: "active-leaf-change",
+            callback: (leaf: WorkspaceLeaf | null) => any,
+            ctx?: any
+        ): EventRef;
+
+        // on: (event: "active-leaf-change", (leaf:WorkspaceLeaf) => void)
     }
 
     interface MenuItem {
