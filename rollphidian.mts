@@ -3,7 +3,7 @@ import type { Rollup, UserConfig, UserConfigFn } from "vite";
 
 interface Pipe {
     userConfig: UserConfig;
-    _apply: (userConfig: UserConfig) => Pipe;
+    _apply: (applyFn: (u: UserConfig) => void) => Pipe;
     withRollupBuildPlugins: (plugins: Rollup.Plugin[]) => Pipe;
 }
 
