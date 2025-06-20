@@ -58,16 +58,24 @@
         "main.js",
         "archive/**/*.*"
     ],
+    // https://www.typescriptlang.org/tsconfig/#files
     "typedocOptions": {
-        "name": "Sribening",
+        "name": "Scribening",
         "readme": "src/README-code-docs.md",
         "excludePrivate": false,
         "excludeProtected": false,
         "excludeReferences": true,
         "out": "code-docs",
-        "gitRevision": "main",
+        "gitRevision": "master",
         "plugin": [
             "typedoc-plugin-mdn-links",
+        ],
+        "include": [
+            "src/component/**/*.*"
+        ],
+        "exclude": [
+            "src/archive",
+            "**/*.md"
         ],
         "sourceLinkExternal": false
     }
