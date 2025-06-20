@@ -14,8 +14,8 @@ export interface DailyNoteSettings {
 }
 
 export const DEFAULT_SETTINGS: DailyNoteSettings = {
-    hideFrontmatter: false,
-    hideBacklinks: false,
+    hideFrontmatter: true,
+    hideBacklinks: true,
     createAndOpenOnStartup: false,
     useArrowUpOrDownToNavigate: false,
     preset: [],

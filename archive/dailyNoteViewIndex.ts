@@ -1,7 +1,7 @@
 import { DAILY_NOTE_VIEW_TYPE, DailyNoteView } from "@src/dailyNoteView";
 import { DailyNoteEditor, isDailyNoteLeaf } from "@src/leafView";
 import { createUpDownNavigationExtension } from "@src/lib/UpAndDownNavigate";
-import type { TimeField } from "@src/types/time.d";
+import type { SortField } from "@src/types/time.t";
 import { addIconList } from "@src/utils/icon";
 import { around } from "monkey-around";
 import {
@@ -127,7 +127,7 @@ export default class DailyNoteViewPlugin extends Plugin {
         workspace.revealLeaf(leaf);
     }
 
-    async openFolderView(folderPath: string, timeField: TimeField = "mtime") {
+    async openFolderView(folderPath: string, timeField: SortField = "mtime") {
         const workspace = this.app.workspace;
         const leaf = workspace.getLeaf(true);
         await leaf.setViewState({ type: DAILY_NOTE_VIEW_TYPE });
@@ -140,7 +140,7 @@ export default class DailyNoteViewPlugin extends Plugin {
         workspace.revealLeaf(leaf);
     }
 
-    async openTagView(tagName: string, timeField: TimeField = "mtime") {
+    async openTagView(tagName: string, timeField: SortField = "mtime") {
         const workspace = this.app.workspace;
         const leaf = workspace.getLeaf(true);
         await leaf.setViewState({ type: DAILY_NOTE_VIEW_TYPE });

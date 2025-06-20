@@ -1,6 +1,6 @@
 import DailyNoteEditorView from "@src/component/DailyNoteEditorView.svelte";
 import DailyNoteViewPlugin from "@src/dailyNoteViewIndex";
-import type { TimeRange, TimeField } from "@src/types/time";
+import type { TimeRange, SortField } from "@src/types/time.t";
 import {
     type WorkspaceLeaf,
     ItemView,
@@ -28,7 +28,7 @@ export class DailyNoteView extends ItemView {
     selectedDaysRange: TimeRange = "all";
     selectionMode: "daily" | "folder" | "tag" = "daily";
     target: string = "";
-    timeField: TimeField = "mtime";
+    timeField: SortField = "mtime";
 
     customRange: {
         start: Date;
@@ -144,7 +144,7 @@ export class DailyNoteView extends ItemView {
             const customState = state as {
                 selectionMode?: "daily" | "folder" | "tag";
                 target?: string;
-                timeField?: TimeField;
+                timeField?: SortField;
                 selectedRange?: TimeRange;
                 customRange?: { start: Date; end: Date } | null;
             };
@@ -181,7 +181,7 @@ export class DailyNoteView extends ItemView {
         }
     }
 
-    setTimeField(field: TimeField) {
+    setTimeField(field: SortField) {
         this.timeField = field;
         if (this.view) {
             this.view.$set({ timeField: field });
@@ -201,7 +201,7 @@ export class DailyNoteView extends ItemView {
             const menu = new Menu();
 
             // Add time field selection options
-            const addTimeFieldOption = (title: string, field: TimeField) => {
+            const addTimeFieldOption = (title: string, field: SortField) => {
                 menu.addItem((item) => {
                     item.setTitle(title);
                     item.setChecked(this.timeField === field);
