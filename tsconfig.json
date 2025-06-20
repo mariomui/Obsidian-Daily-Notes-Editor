@@ -30,7 +30,9 @@
         "typeRoots": [
             "node_modules/@types",
             "src/types",
-            "build-types/**/*.t.ts"
+            "src/types/**/*.t.ts",
+            "build-types/**/*.t.ts",
+            "src/**/*.t.ts"
         ],
         "paths": {
             "@src/*": [
@@ -53,6 +55,20 @@
     ],
     "exclude": [
         "dist/**/*.*",
-        "main.js"
-    ]
+        "main.js",
+        "archive/**/*.*"
+    ],
+    "typedocOptions": {
+        "name": "Sribening",
+        "readme": "src/README-code-docs.md",
+        "excludePrivate": false,
+        "excludeProtected": false,
+        "excludeReferences": true,
+        "out": "code-docs",
+        "gitRevision": "main",
+        "plugin": [
+            "typedoc-plugin-mdn-links",
+        ],
+        "sourceLinkExternal": false
+    }
 }

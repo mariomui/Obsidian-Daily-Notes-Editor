@@ -1,22 +1,20 @@
 // import { rename } from "node:fs/promises";
 
-import { join, resolve as pathresolve } from "node:path";
 import resolve from "@rollup/plugin-node-resolve";
 import replace from "@rollup/plugin-replace";
 import terser from "@rollup/plugin-terser";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import builtins from "builtin-modules";
 import chalk from "chalk";
 import copyNewer from "copy-newer";
-import { ensureFile, pathExists, move } from "fs-extra";
+import { createReadStream } from "node:fs";
+import { join, resolve as pathresolve } from "node:path";
 import autoPreprocess from "svelte-preprocess";
-import { ConfigEnv, createLogger, Rollup, UserConfig } from "vite";
-import { defineConfig } from "vite";
+import { ConfigEnv, defineConfig, Rollup, UserConfig } from "vite";
+import type { HookOptions } from "./.svelte-kit/build-types/rollphidian/$types";
+import { RollupLogger } from "./build-utils/RollupLogger.mts";
 import type { PipeConstructor } from "./rollphidian.mts";
 import { Pipe } from "./rollphidian.mts";
-import { RollupLogger } from "./build-utils/RollupLogger.mts";
-import builtins from "builtin-modules";
-import { createReadStream } from "node:fs";
-import type { HookOptions } from "./.svelte-kit/build-types/rollphidian/$types";
 
 // const prod = process.argv[4] === "production";
 const rollupLogger = new RollupLogger(chalk);
@@ -30,7 +28,7 @@ function manuViteFig(configEnv: ConfigEnv): UserConfig {
     };
 
     const TEST_VAULT_PATH = process.env?.OBSIDIAN_TEST_VAULT;
-
+    const REL_TEST_FOLDER_PATH = process.env?.SCRIBENING_REL_TEST_FOLDER ?? "";
     // ## DERIVED FROM CONSTS;
     const isPrototyping = ["true", undefined].includes(
         process.env?.isPrototyping
@@ -132,6 +130,13 @@ function manuViteFig(configEnv: ConfigEnv): UserConfig {
     let outDir = _userFig?.build?.outDir || dist;
     // consider automatically putting a callout in the With Functions so I can pass dist through it.
     new Piper(_userFig)
+        ._apply((u) => {
+            u.define = {
+                __MODE__: JSON.stringify(mode),
+                __SCRIBENING_REL_TEST_FOLDER__:
+                    JSON.stringify(REL_TEST_FOLDER_PATH),
+            };
+        })
         .withRollupBuildPlugins([
             CopyManifestToDistPlugin(dist, "manifest.dev.json"),
         ])

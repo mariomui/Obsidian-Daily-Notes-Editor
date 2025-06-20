@@ -9,7 +9,8 @@
         "dev": "pnpm xlint && vite build --config vite.config.mts --watch --mode development",
         "build": "pnpm dlx svelte-check && vite --config vite.config.mts build --mode production",
         "version": "node version-bump.mjs && git add manifest.json versions.json",
-        "odev": "IS_PROTOTYPING=false vite build --config vite.config.mts --watch --mode development"
+        "odev": "IS_PROTOTYPING=false vite build --config vite.config.mts --watch --mode development",
+        "code-docs": "typedoc \"src/**/*\""
     },
     "type": "module",
     "keywords": [],
@@ -45,6 +46,8 @@
         "svelte-inview": "^4.0.2",
         "svelte-preprocess": "^5.1.4",
         "tslib": "2.4.0",
+        "typedoc": "^0.28.5",
+        "typedoc-plugin-mdn-links": "^5.0.2",
         "typescript": "5.3.3",
         "vite": "link:@sveltjs/kit/vite"
     },

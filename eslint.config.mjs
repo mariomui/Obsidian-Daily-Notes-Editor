@@ -29,7 +29,9 @@ export default defineConfig([
         "**/*.d.ts",
         "**/*.test.ts",
         "eslint.config.mjs",
+        "archive/**/*.*",
     ]),
+
     {
         files: ["**/*.mjs", "**/*.ts"],
         extends: compat.extends(
@@ -49,6 +51,9 @@ export default defineConfig([
             globals: {
                 ...globals.node,
                 ...globals.browser,
+                __MODE__: "readonly",
+                __SCRIBENING_REL_TEST_FOLDER__: "readonly",
+                NodeJS: true,
             },
 
             parser: tsParser,
@@ -102,6 +107,8 @@ export default defineConfig([
             globals: {
                 ...globals.node,
                 ...globals.browser,
+                __MODE__: "readonly",
+                __SCRIBENING_REL_TEST_FOLDER__: "readonly",
             },
             parserOptions: {
                 parser: tsParser,
