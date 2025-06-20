@@ -1,5 +1,5 @@
 import type { View, Workspace, WorkspaceSplit } from "obsidian";
-import type { ScribeningNoteEditor } from "./scribening-leaf-view";
+import { ScribeningNoteEditor } from "./scribening-leaf-view";
 
 // export interface DailyNoteEditorParent {
 //     hoverPopover: DailyNoteEditor | null;
@@ -21,3 +21,15 @@ export type ConstructableWorkspaceSplit = new (
 
 export const SV_NOTE_LEAF_COMPLEX_CSS_SELECTOR =
     ".dn-editor.dn-leaf-view .workspace-leaf";
+export const popoverEltoSvNoteEditorMap = new WeakMap<
+    Element,
+    ScribeningNoteEditor
+>();
+
+export type FishoutSvNoteEditorFromFn = (
+    win?: Window
+) => ReturnType<typeof ScribeningNoteEditor.fishoutSvNoteEditorFrom>;
+
+export type GetWindowsFromWorkspaceSplitFn = () => ReturnType<
+    typeof ScribeningNoteEditor.getWindowsFromWorkspaceSplit
+>;

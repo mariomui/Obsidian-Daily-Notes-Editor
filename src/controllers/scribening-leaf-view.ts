@@ -24,11 +24,12 @@ import {
 } from "obsidian";
 import {
     type ConstructableWorkspaceSplit,
+    type FishoutSvNoteEditorFromFn,
+    type GetWindowsFromWorkspaceSplitFn,
+    popoverEltoSvNoteEditorMap,
     type ScribeningNoteEditorParent,
     SV_NOTE_LEAF_COMPLEX_CSS_SELECTOR,
 } from "./scribening-leaf-view.t";
-
-const popoverEltoSvNoteEditorMap = new WeakMap<Element, ScribeningNoteEditor>();
 
 export function checkIsScribeningNoteLeaf(
     leaf: WorkspaceLeaf,
@@ -106,7 +107,8 @@ export class ScribeningNoteEditor extends nosuper(HP) {
     originalLinkText: string;
     static activePopover?: ScribeningNoteEditor;
 
-    static getWindowsFromWorkspaceSplit() {
+    static getWindowsFromWorkspaceSplit(): Window[] {
+        // previously named: activeWindows
         const windows: Window[] = [window];
         // this is static so might go crazy
         //https://github.com/Fevol/obsidian-typings/blob/e1b292503d1a3dfea55f4d491b01dd599f74f31d/src/obsidian/augmentations/Workspace.d.ts#L93
@@ -129,9 +131,13 @@ export class ScribeningNoteEditor extends nosuper(HP) {
             }
         return plugin.app.workspace.rootSplit;
     }
-
-    static activePopovers(activeWindows, flatMapWindowToSVNoteEditorPredicate) {
-        return activeWindows().flatMap(flatMapWindowToSVNoteEditorPredicate);
+    static getActivePopovers(
+        getWindowsFromWorkspaceSplit: GetWindowsFromWorkspaceSplitFn,
+        flatMapWindowToSVNoteEditorPredicate: FishoutSvNoteEditorFromFn
+    ): ScribeningNoteEditor[] {
+        return getWindowsFromWorkspaceSplit().flatMap(
+            flatMapWindowToSVNoteEditorPredicate
+        );
     }
 
     /**
@@ -393,7 +399,11 @@ export class ScribeningNoteEditor extends nosuper(HP) {
     }
 
     shouldShowChild(): boolean {
-        return ScribeningNoteEditor.activePopovers().some((popover) => {
+        // activeWindows, flatMapWindowToSVNoteEditorPredicate;
+        return ScribeningNoteEditor.getActivePopovers(
+            ScribeningNoteEditor.getWindowsFromWorkspaceSplit,
+            ScribeningNoteEditor.fishoutSvNoteEditorFrom
+        ).some((popover) => {
             if (
                 popover !== this &&
                 popover.targetEl &&
