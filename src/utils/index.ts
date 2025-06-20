@@ -14,4 +14,6 @@ export function getBasenameOfFolderPath(vault: Vault, path: string) {
     return folder_name;
 }
 
-export function logger(...args) {}
+export function logger(...args: any[]) {
+    console.log.apply(this, args);
+}
