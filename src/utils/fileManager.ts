@@ -1,4 +1,6 @@
-import { type TFile, moment, type App } from "obsidian";
+import type { SelectionModeValue } from "@src/controllers/ScribeningNoteView.t";
+import { SORT_BYS } from "@src/types/time.t";
+import { moment, TFile, type App } from "obsidian";
 import {
     getAllDailyNotes,
     getDailyNote,
@@ -7,15 +9,15 @@ import {
     getDailyNoteSettings,
     DEFAULT_DAILY_NOTE_FORMAT,
 } from "obsidian-daily-notes-interface";
-import type { TimeRange, TimeField } from "../types/time.d";
+import type { TimeRange, SortField as SortField } from "../types/time.t";
 
 export interface FileManagerOptions {
-    mode: "daily" | "folder" | "tag";
+    mode: SelectionModeValue;
     target?: string;
     timeRange?: TimeRange;
     customRange?: { start: Date; end: Date } | null;
     app?: App;
-    timeField?: TimeField;
+    sortField?: SortField;
 }
 
 export class FileManager {
@@ -35,34 +37,30 @@ export class FileManager {
 
     /**
      * Helper method to parse time field and check if it's reverse
-     * @param timeField The time field to parse
+     * @param sortField The time field to parse
      * @returns An object containing isReverse flag and baseTimeField
      */
-    private parseTimeField(timeField: TimeField | undefined): {
-        isReverse: boolean;
-        baseTimeField: string;
-    } {
-        const field = timeField || "mtime";
+    private parseSortField(
+        sortField: SortField | undefined
+    ): [isReverse: boolean, sortField: string] {
+        const field = sortField || SORT_BYS.NAME;
         const isReverse = field.endsWith("Reverse");
         const baseTimeField = isReverse ? field.replace("Reverse", "") : field;
-        return { isReverse, baseTimeField };
+        return [isReverse, baseTimeField];
     }
 
     /**
      * Helper method to sort files by time field
      * @param files The files to sort
-     * @param timeField The time field to sort by
+     * @param sortField The time field to sort by
      * @returns Sorted files
      */
-    private sortFilesByTimeField(
-        files: TFile[],
-        timeField?: TimeField
-    ): TFile[] {
-        const { isReverse, baseTimeField } = this.parseTimeField(timeField);
+    private sortFiles(files: TFile[], sortField?: SortField): TFile[] {
+        const [isReverse, baseSortField] = this.parseSortField(sortField);
 
         return [...files].sort((a, b) => {
             // Handle name-based sorting
-            if (baseTimeField === "name") {
+            if (baseSortField === SORT_BYS.NAME) {
                 // For name sorting, we sort alphabetically by filename
                 if (isReverse) {
                     return b.name.localeCompare(a.name);
@@ -72,26 +70,16 @@ export class FileManager {
 
             // Handle time-based sorting (existing functionality)
             if (isReverse) {
-                return a.stat[baseTimeField] - b.stat[baseTimeField];
+                return a.stat[baseSortField] - b.stat[baseSortField];
             }
-            return b.stat[baseTimeField] - a.stat[baseTimeField];
+            return b.stat[baseSortField] - a.stat[baseSortField];
         });
     }
 
     public fetchFiles(): void {
         if (this.hasFetched) return;
 
-        switch (this.options.mode) {
-            case "daily":
-                this.fetchDailyNotes();
-                break;
-            case "folder":
-                this.fetchFolderFiles();
-                break;
-            case "tag":
-                this.fetchTaggedFiles();
-                break;
-        }
+        this.fetchFolderFiles();
 
         this.hasFetched = true;
         this.checkDailyNote();
@@ -105,11 +93,11 @@ export class FileManager {
         const notes = Object.values(this.cacheDailyNotes) as TFile[];
 
         // Sort based on the selected time field
-        const { isReverse, baseTimeField } = this.parseTimeField(
-            this.options.timeField
+        const [isReverse, baseSortField] = this.parseSortField(
+            this.options.sortField
         );
 
-        if (baseTimeField === "name") {
+        if (baseSortField === SORT_BYS.NAME) {
             // For name-based sorting, sort by filename
             this.allFiles = [...notes].sort((a, b) => {
                 const result = a.name.localeCompare(b.name);
@@ -125,10 +113,10 @@ export class FileManager {
             }
 
             // Apply additional time-based sorting if needed
-            if (baseTimeField !== "ctime" && baseTimeField !== "mtime") {
-                this.allFiles = this.sortFilesByTimeField(
+            if (baseSortField !== "ctime" && baseSortField !== "mtime") {
+                this.allFiles = this.sortFiles(
                     this.allFiles,
-                    this.options.timeField
+                    this.options.sortField
                 );
             }
         }
@@ -150,10 +138,7 @@ export class FileManager {
         });
 
         // Sort files by the specified time field
-        this.allFiles = this.sortFilesByTimeField(
-            this.allFiles,
-            this.options.timeField
-        );
+        this.allFiles = this.sortFiles(this.allFiles, this.options.sortField);
     }
 
     private fetchTaggedFiles(): void {
@@ -175,10 +160,7 @@ export class FileManager {
         });
 
         // Sort files by the specified time field
-        this.allFiles = this.sortFilesByTimeField(
-            this.allFiles,
-            this.options.timeField
-        );
+        this.allFiles = this.sortFiles(this.allFiles, this.options.sortField);
     }
 
     public filterFilesByRange(): TFile[] {
@@ -203,7 +185,7 @@ export class FileManager {
             this.filterDailyNotesByRange();
         } else {
             // Folder and tag modes: filter files by creation or modification time
-            this.filterFilesByTimeRange();
+            this.doFilterFilesByTimeRange();
         }
 
         return this.filteredFiles;
@@ -213,16 +195,16 @@ export class FileManager {
      * Filter files by time range
      * Applicable to folder and tag modes
      */
-    private filterFilesByTimeRange(): void {
+    private doFilterFilesByTimeRange(): void {
         const now = (moment as any)();
-        const { isReverse, baseTimeField } = this.parseTimeField(
-            this.options.timeField
+        const [isReverse, baseSortField] = this.parseSortField(
+            this.options.sortField
         );
 
         // Filter files by creation or modification time
         this.filteredFiles = this.allFiles.filter((file) => {
             // Get the time of the file based on the base timeField option
-            const fileDate = (moment as any)(file.stat[baseTimeField]);
+            const fileDate = (moment as any)(file.stat[baseSortField]);
 
             return this.isDateInRange(fileDate, now);
         });
@@ -346,6 +328,28 @@ export class FileManager {
         return true;
     }
 
+    populateTfile(
+        dirpath,
+        basename: string,
+        contents: string,
+        tfile: TFile
+    ): TFile {
+        tfile.basename = basename;
+        tfile.path = `$path/${basename}.md`;
+        (tfile as any).unsafeCachedData = contents;
+        // tfile.path = tfile;
+        return tfile;
+        // this.app.vault.create(path: string, data: string, options?: DataWriteOptions): Promise<TFile>;
+    }
+    public async appendNote(): Promise<TFile | null> {
+        // const currentDailyNote = populateTfile();
+        // if (this.filteredFiles.length > 0 && currentDailyNote) {
+        //     this.filteredFiles.push(currentDailyNote);
+        //     return currentDailyNote;
+        // }
+
+        return null;
+    }
     public async createNewDailyNote(): Promise<TFile | null> {
         if (this.options.mode !== "daily" || this.hasCurrentDay) {
             return null;
@@ -455,9 +459,9 @@ export class FileManager {
             this.allFiles.push(file);
 
             // Sort files by the specified time field
-            this.allFiles = this.sortFilesByTimeField(
+            this.allFiles = this.sortFiles(
                 this.allFiles,
-                this.options.timeField
+                this.options.sortField
             );
 
             // Update filtered files
@@ -492,13 +496,13 @@ export class FileManager {
     private sortDailyNotes(notes: TFile[]): TFile[] {
         // Sort daily notes by date (newest first by default)
         // For this, we're using the file name which follows the daily note format
-        const { isReverse, baseTimeField } = this.parseTimeField(
-            this.options.timeField
+        const [isReverse, baseSortField] = this.parseSortField(
+            this.options.sortField
         );
 
         // If sorting by name, use alphabetical sorting which will automatically
         // sort chronologically for date-formatted filenames
-        if (baseTimeField === "name") {
+        if (baseSortField === SORT_BYS.NAME) {
             return [...notes].sort((a, b) => {
                 if (isReverse) {
                     return b.name.localeCompare(a.name);
@@ -508,7 +512,7 @@ export class FileManager {
         }
 
         // Otherwise use the normal time-based sorting
-        return this.sortFilesByTimeField(notes, this.options.timeField);
+        return this.sortFiles(notes, this.options.sortField);
     }
 
     public getAllFiles(): TFile[] {
@@ -517,10 +521,6 @@ export class FileManager {
 
     public getFilteredFiles(): TFile[] {
         return this.filteredFiles;
-    }
-
-    public hasCurrentDayNote(): boolean {
-        return this.hasCurrentDay;
     }
 
     public updateOptions(options: Partial<FileManagerOptions>): void {

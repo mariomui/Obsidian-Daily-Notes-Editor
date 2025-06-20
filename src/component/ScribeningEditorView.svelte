@@ -7,25 +7,31 @@
     import ScribeningNote from "@src/component/ScribeningNote.svelte";
     import { inview } from "svelte-inview";
 
-    import type {TimeRange, TimeField, SelectionMode} from "@src/types/time.d"
+    import {
+        type TimeRange,
+        type SortField,
+        SORT_BYS,
+    } from "@src/types/time.t";
+
     import { onMount } from "svelte";
     import { FileManager, type FileManagerOptions } from "@utils/fileManager";
-
+    import {
+        SELECTION_MODES,
+        type SelectionModeValue,
+    } from "@src/controllers/ScribeningNoteView.t";
 
     export let plugin: ScribeningViewPlugin;
     export let leaf: WorkspaceLeaf;
-    export let selectedRange: TimeRange = "all";
-    export let customRange: { start: Date; end: Date } | null = null;
-    export let selectionMode: SelectionMode = "daily";
+    export let selectionMode: SelectionModeValue = SELECTION_MODES.FOLDER;
     export let target: string = "";
-    export let timeField: TimeField = "mtime"; // 默认使用修改时间
-    
+    export let sortField: SortField = SORT_BYS.NAME;
+
     const size = 1;
     let intervalId;
 
     let renderedFiles: TFile[] = [];
     let filteredFiles: TFile[] = [];
-    
+
     // Track which notes are in viewport
     let visibleNotes: Set<string> = new Set();
 
@@ -35,37 +41,34 @@
 
     // Create the file manager
     let fileManager: FileManager;
-    
+
     $: fileManagerOptions = {
         mode: selectionMode,
         target: target,
-        timeRange: selectedRange,
-        customRange: customRange,
         app: plugin.app,
-        timeField: timeField
+        sortField: sortField,
     } as FileManagerOptions;
 
-    $: if (fileManager && (selectedRange !== fileManager.options.timeRange || 
-                          customRange !== fileManager.options.customRange ||
-                          selectionMode !== fileManager.options.mode ||
-                          target !== fileManager.options.target ||
-                          timeField !== fileManager.options.timeField)) {
+    $: if (
+        fileManager &&
+        (selectionMode !== fileManager.options.mode ||
+            target !== fileManager.options.target ||
+            sortField !== fileManager.options.sortField)
+    ) {
         fileManager.updateOptions({
-            timeRange: selectedRange,
-            customRange: customRange,
             mode: selectionMode,
             target: target,
-            timeField: timeField
+            sortField: sortField,
         });
-        
+
         // Reset rendered files and start filling viewport again
         renderedFiles = [];
         visibleNotes.clear();
         filteredFiles = fileManager.getFilteredFiles();
         hasMore = filteredFiles.length > 0;
         firstLoaded = true;
-        startFillViewport();
-        
+        startFillViewport(infiniteHandler);
+
         // Update the title element with the new range information
         updateTitleElement();
     }
@@ -74,8 +77,8 @@
         fileManager = new FileManager(fileManagerOptions);
         filteredFiles = fileManager.getFilteredFiles();
         hasMore = filteredFiles.length > 0;
-        startFillViewport();
-        
+        startFillViewport(infiniteHandler);
+
         // Initialize the title element
         updateTitleElement();
     });
@@ -83,43 +86,33 @@
     // Function to update the title element with range information
     function updateTitleElement() {
         if (!leaf || !leaf.view || !leaf.view.titleEl) return;
-         
+
         // Get the title element and clear it
         const titleEl = leaf.view.titleEl;
         titleEl.empty();
-        
+
         // Set the base title
-        let titleText = '';
+        let titleText = "";
 
-        // Add range information based on the current selection mode and range
+        titleText = `Showing files from folder: ${target}`;
+        titleEl.setText(titleText);
+        // if (selectedRange !== "all") {
+        //     titleText += ` (${timeField === "ctime" ? "created" : "modified"} ${selectedRange})`;
+        // }
 
-        if (selectionMode === "daily" && selectedRange !== 'all') {
-            if (selectedRange === 'custom' && customRange) {
-                titleText = `Showing notes from: ${(moment as any)(customRange.start).format('YYYY-MM-DD')} to ${(moment as any)(customRange.end).format('YYYY-MM-DD')}`;
-            } else {
-                titleText = `Showing notes for: ${selectedRange}`;
-            }
-        } else if (selectionMode === "folder") {
-            titleText = `Showing files from folder: ${target}`;
-            if (selectedRange !== 'all') {
-                titleText += ` (${timeField === 'ctime' ? 'created' : 'modified'} ${selectedRange})`;
-            }
-        } else if (selectionMode === "tag") {
-            titleText = `Showing files with tag: ${target}`;
-            if (selectedRange !== 'all') {
-                titleText += ` (${timeField === 'ctime' ? 'created' : 'modified'} ${selectedRange})`;
-            }
-        }
-        
         // Set the title text
-        if (titleText) {
-            titleEl.setText(titleText);
-        } else {
-            titleEl.setText("Daily Notes");
-        }
+        // if (titleText) {
+        //     titleEl.setText(titleText);
+        // } else {
+        //     titleEl.setText("Daily Notes");
+        // }
     }
 
-    function startFillViewport() {
+    /**
+     * Expands the editor view to fill the entire viewport.
+     * Typically used to maximize the editing area for better user experience.
+     */
+    function startFillViewport(infiniteHandler) {
         if (!intervalId) {
             intervalId = setInterval(infiniteHandler, 1);
         }
@@ -138,7 +131,7 @@
         } else {
             renderedFiles = [
                 ...renderedFiles,
-                ...filteredFiles.splice(0, size)
+                ...filteredFiles.splice(0, size),
             ];
             if (firstLoaded) {
                 window.setTimeout(() => {
@@ -151,26 +144,33 @@
 
     function ensureViewFilled() {
         if (!loaderRef) return;
-        
+
         // Get the loader element's position
         const loaderRect = loaderRef.getBoundingClientRect();
-        
+
         // Get the viewport height
         const viewportHeight = window.innerHeight;
-        
+
         // Get the content element's height (with fallback)
-        const contentHeight = leaf.view.contentEl.clientHeight || leaf.view.contentEl.innerHeight || viewportHeight;
-        
+        const contentHeight =
+            leaf.view.contentEl.clientHeight ||
+            leaf.view.contentEl.innerHeight ||
+            viewportHeight;
+
         // Use the maximum of viewport height and content height with a buffer
         const effectiveHeight = Math.max(viewportHeight, contentHeight) + 200;
-        
+
         // Check if we need to load more content
         if (loaderRect.top < effectiveHeight) {
             infiniteHandler();
-            
+
             // Recursively check again after a short delay to ensure the view is filled
             window.setTimeout(() => {
-                if (hasMore && loaderRef && loaderRef.getBoundingClientRect().top < effectiveHeight) {
+                if (
+                    hasMore &&
+                    loaderRef &&
+                    loaderRef.getBoundingClientRect().top < effectiveHeight
+                ) {
                     ensureViewFilled();
                 }
             }, 50);
@@ -190,25 +190,22 @@
     export function tick() {
         // First check if we need to update for a new day
         check();
-        
+
         // Force a refresh of the view
         renderedFiles = renderedFiles;
     }
 
     export function check() {
-        console.log("checking if there's a new daily note and it'll add it")
         // Check if there's a new daily note (e.g., after day change)
         // const hadDailyNote = fileManager.hasCurrentDayNote();
         // fileManager.checkDailyNote();
         // const hasDailyNote = fileManager.hasCurrentDayNote();
-        
         // // If the daily note status changed (e.g., we just crossed midnight),
         // // refresh the file list to ensure we show the current day's daily note
-        // if (hadDailyNote !== hasDailyNote || 
+        // if (hadDailyNote !== hasDailyNote ||
         //     (selectionMode === "daily" && selectedRange !== "all")) {
         //     // Get updated filtered files
         //     filteredFiles = fileManager.getFilteredFiles();
-            
         //     // Reset rendered files and start filling viewport again if in daily mode
         //     if (selectionMode === "daily") {
         //         renderedFiles = [];
@@ -220,43 +217,45 @@
         // }
     }
 
-
     export function fileCreate(file: TFile) {
         fileManager.fileCreate(file);
         // Update the rendered files if needed
         if (selectionMode === "folder") {
             // For daily notes, we need to check if the file should be added to the rendered files
             const filteredFiles = fileManager.getFilteredFiles();
-            if (filteredFiles.some(f => f.basename === file.basename) && 
-                !renderedFiles.some(f => f.basename === file.basename)) {
+            if (
+                filteredFiles.some((f) => f.basename === file.basename) &&
+                !renderedFiles.some((f) => f.basename === file.basename)
+            ) {
                 renderedFiles = [file, ...renderedFiles];
                 // Automatically mark the new note as visible
                 visibleNotes.add(file.path);
                 visibleNotes = visibleNotes;
             }
             return;
-        } 
+        }
 
-            // For folder and tag modes, we can simply update the rendered files
-        renderedFiles = fileManager.getFilteredFiles().slice(0, renderedFiles.length);
-
+        // For folder and tag modes, we can simply update the rendered files
+        renderedFiles = fileManager
+            .getFilteredFiles()
+            .slice(0, renderedFiles.length);
     }
 
     export function fileDelete(file: TFile) {
         fileManager.fileDelete(file);
-        
+
         // Remove the file from rendered files if it exists
         renderedFiles = renderedFiles.filter((dailyNote) => {
             return dailyNote.basename !== file.basename;
         });
-        
+
         // Remove from visible notes
         if (visibleNotes.has(file.path)) {
             visibleNotes.delete(file.path);
             visibleNotes = visibleNotes;
         }
     }
-    
+
     // Handle note visibility change
     function handleNoteVisibilityChange(file: TFile, isVisible: boolean) {
         // console.log("inview", isVisible)
@@ -272,41 +271,54 @@
 <div class="daily-note-view">
     {#if renderedFiles.length === 0}
         <div class="dn-stock">
-            <div class="dn-stock-text">
-                No files found
-            </div>
+            <div class="dn-stock-text">No files found</div>
         </div>
     {/if}
-    {#if selectionMode === "daily" && !fileManager?.hasCurrentDayNote() && (selectedRange === 'all' || selectedRange === 'week' || selectedRange === 'month' || selectedRange === 'year' || selectedRange === 'quarter')}
-        <div class="dn-blank-day" on:click={createNewDailyNote} aria-hidden="true">
+    <!-- {#if selectionMode === "daily" && !fileManager?.hasCurrentDayNote() && (selectedRange === "all" || selectedRange === "week" || selectedRange === "month" || selectedRange === "year" || selectedRange === "quarter")}
+        <div
+            class="dn-blank-day"
+            on:click={createNewDailyNote}
+            aria-hidden="true"
+        >
             <div class="dn-blank-day-text">
                 Create a daily note for today ✍
             </div>
         </div>
-    {/if}
+    {/if} -->
     {#each renderedFiles as file (file.path)}
-        <div class="daily-note-wrapper" use:inview={{
-            rootMargin: "80%",
-            unobserveOnEnter: false,
-            root: leaf.view.contentEl
-        }} on:inview_change={({ detail }) => handleNoteVisibilityChange(file, detail.inView)}>
-            <ScribeningNote 
-                file={file} 
-                plugin={plugin} 
-                leaf={leaf} 
+        <div
+            class="daily-note-wrapper"
+            use:inview={{
+                rootMargin: "80%",
+                unobserveOnEnter: false,
+                root: leaf.view.contentEl,
+            }}
+            on:inview_change={({ detail }) =>
+                handleNoteVisibilityChange(file, detail.inView)}
+        >
+            <ScribeningNote
+                {file}
+                {plugin}
+                {leaf}
                 shouldRender={visibleNotes.has(file.path)}
             />
         </div>
     {/each}
-    <div bind:this={loaderRef} class="dn-view-loader" use:inview={{
-        root: leaf.view.containerEl
-    }} on:inview_init={startFillViewport} on:inview_change={infiniteHandler}
-         on:inview_leave={stopFillViewport}/>
+    <div
+        bind:this={loaderRef}
+        class="dn-view-loader"
+        use:inview={{
+            root: leaf.view.containerEl,
+        }}
+        on:inview_init={() => startFillViewport(infiniteHandler)}
+        on:inview_change={infiniteHandler}
+        on:inview_leave={stopFillViewport}
+    />
     {#if !hasMore}
         <div class="no-more-text">—— No more of results ——</div>
+        <button on:click={createNewDailyNote}></button>
     {/if}
 </div>
-
 
 <style>
     .dn-stock {
@@ -328,29 +340,6 @@
         text-align: center;
     }
 
-    .dn-blank-day {
-        display: flex;
-        margin-left: auto;
-        margin-right: auto;
-        max-width: var(--file-line-width);
-        color: var(--color-base-40);
-        padding-top: 20px;
-        padding-bottom: 20px;
-        transition: all 300ms;
-    }
-
-    .dn-blank-day:hover {
-        padding-top: 40px;
-        padding-bottom: 40px;
-        transition: padding 300ms;
-    }
-
-    .dn-blank-day-text {
-        margin-left: auto;
-        margin-right: auto;
-        text-align: center;
-    }
-    
     .daily-note-wrapper {
         width: 100%;
     }

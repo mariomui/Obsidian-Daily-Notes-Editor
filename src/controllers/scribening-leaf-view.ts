@@ -3,10 +3,9 @@
 // Please rememeber if you want to use this file, you should patch the obsidian.d.ts file
 // And also monkey around the Obsidian original method.
 
-import type DailyNoteViewPlugin from "@src/dailyNoteViewIndex";
-import type ScribeningPlugin from "@src/main";
+import type Scribening from "@src/main";
 
-import { genId } from "@src/utils";
+import { genId, logger } from "@src/utils";
 import {
     Component,
     type EphemeralState,
@@ -18,36 +17,25 @@ import {
     requireApiVersion,
     resolveSubpath,
     TFile,
-    type View,
     type Workspace,
     type WorkspaceLeaf,
     WorkspaceSplit,
     WorkspaceTabs,
 } from "obsidian";
+import {
+    type ConstructableWorkspaceSplit,
+    type ScribeningNoteEditorParent,
+    SV_NOTE_LEAF_COMPLEX_CSS_SELECTOR,
+} from "./scribening-leaf-view.t";
 
-// export interface DailyNoteEditorParent {
-//     hoverPopover: DailyNoteEditor | null;
-//     containerEl?: HTMLElement;
-//     view?: View;
-//     dom?: HTMLElement;
-// }
+const popoverEltoSvNoteEditorMap = new WeakMap<Element, ScribeningNoteEditor>();
 
-export interface ScribeningNoteEditorParent {
-    hoverPopover: ScribeningNoteEditor | null;
-    containerEl?: HTMLElement;
-    view?: View;
-    dom?: HTMLElement;
-}
-
-const popovers = new WeakMap<Element, ScribeningNoteEditor>();
-type ConstructableWorkspaceSplit = new (
-    ws: Workspace,
-    dir: "horizontal" | "vertical"
-) => WorkspaceSplit;
-
-export function checkIsScribeningNoteLeaf(leaf: WorkspaceLeaf) {
+export function checkIsScribeningNoteLeaf(
+    leaf: WorkspaceLeaf,
+    identifier = SV_NOTE_LEAF_COMPLEX_CSS_SELECTOR
+) {
     // Work around missing enhance.js API by checking match condition instead of looking up parent
-    return leaf.containerEl.matches(".dn-editor.dn-leaf-view .workspace-leaf");
+    return leaf.containerEl.matches(identifier);
 }
 
 function nosuper<T>(base: new (...args: unknown[]) => T): new () => T {
@@ -59,7 +47,7 @@ function nosuper<T>(base: new (...args: unknown[]) => T): new () => T {
 }
 
 export const spawnLeafView = (
-    plugin: ScribeningPlugin,
+    plugin: Scribening,
     initiatingEl?: HTMLElement,
     leaf?: WorkspaceLeaf,
     onShowCallback?: () => unknown
@@ -118,10 +106,13 @@ export class ScribeningNoteEditor extends nosuper(HP) {
     originalLinkText: string;
     static activePopover?: ScribeningNoteEditor;
 
-    static activeWindows() {
+    static getWindowsFromWorkspaceSplit() {
         const windows: Window[] = [window];
+        // this is static so might go crazy
+        //https://github.com/Fevol/obsidian-typings/blob/e1b292503d1a3dfea55f4d491b01dd599f74f31d/src/obsidian/augmentations/Workspace.d.ts#L93
         // @ts-ignore
         const { floatingSplit } = app.workspace;
+        logger({ floatingSplit });
         if (floatingSplit) {
             for (const split of floatingSplit.children) {
                 if (split.win) windows.push(split.win);
@@ -130,7 +121,7 @@ export class ScribeningNoteEditor extends nosuper(HP) {
         return windows;
     }
 
-    static containerForDocument(plugin: ScribeningPlugin, doc: Document) {
+    static containerForDocument(plugin: Scribening, doc: Document) {
         if (doc !== document && plugin.app.workspace.floatingSplit)
             for (const container of plugin.app.workspace.floatingSplit
                 .children) {
@@ -139,8 +130,8 @@ export class ScribeningNoteEditor extends nosuper(HP) {
         return plugin.app.workspace.rootSplit;
     }
 
-    static activePopovers() {
-        return this.activeWindows().flatMap(this.popoversForWindow);
+    static activePopovers(activeWindows, flatMapWindowToSVNoteEditorPredicate) {
+        return activeWindows().flatMap(flatMapWindowToSVNoteEditorPredicate);
     }
 
     /**
@@ -149,41 +140,43 @@ export class ScribeningNoteEditor extends nosuper(HP) {
      * @param win - The window to search in.
      * @returns Array of `ScribeningNoteEditor` instances.
      */
-    static popoversForWindow(win?: Window): ScribeningNoteEditor[] {
-        return (
-            Array.prototype.slice.call(
-                win?.document?.body.querySelectorAll(".dn-leaf-view") ?? []
-            ) as HTMLElement[]
-        )
-            .map((el) => popovers.get(el)!)
-            .filter((he) => he);
+    static fishoutSvNoteEditorFrom(win?: Window): ScribeningNoteEditor[] {
+        const $leafs = Array.prototype.slice.call(
+            win?.document?.body.querySelectorAll(".dn-leaf-view") ?? []
+        ) as HTMLElement[];
+        return $leafs
+            .map(($el) => popoverEltoSvNoteEditorMap.get($el)!)
+            .filter(Boolean);
     }
 
-    static forLeaf(leaf: WorkspaceLeaf | undefined) {
-        // leaf can be null such as when right clicking on an internal link
-        const el =
-            leaf &&
-            document.body.matchParent.call(leaf.containerEl, ".dn-leaf-view"); // work around matchParent race condition
-        return el ? popovers.get(el) : undefined;
-    }
+    // static forLeaf(leaf: WorkspaceLeaf | undefined) {
+    //     // leaf can be null such as when right clicking on an internal link
+    //     const el =
+    //         leaf &&
+    //         document.body.matchParent.call(leaf.containerEl, ".dn-leaf-view"); // work around matchParent race condition
+    //     return el ? popoverEltoSvNoteEditorMap.get(el) : undefined;
+    // }
 
-    static iteratePopoverLeaves(
-        ws: Workspace,
-        cb: (leaf: WorkspaceLeaf) => boolean | void
-    ) {
-        for (const popover of this.activePopovers()) {
-            if (popover.rootSplit && ws.iterateLeaves(cb, popover.rootSplit))
-                return true;
-        }
-        return false;
-    }
+    // static iteratePopoverLeaves(
+    //     ws: Workspace,
+    //     cb: (leaf: WorkspaceLeaf) => boolean | void
+    // ) {
+    //     for (const popover of this.activePopovers(
+    //         this.getWindowsFromWorkspaceSplit,
+    //         this.fishoutSvNoteEditorFrom
+    //     )) {
+    //         if (popover.rootSplit && ws.iterateLeaves(cb, popover.rootSplit))
+    //             return true;
+    //     }
+    //     return false;
+    // }
 
     hoverEl: HTMLElement;
 
     constructor(
         parent: ScribeningNoteEditorParent,
         public targetEl: HTMLElement,
-        public plugin: ScribeningPlugin,
+        public plugin: Scribening,
         waitTime?: number,
         public onShowCallback?: () => unknown
     ) {
@@ -216,7 +209,7 @@ export class ScribeningNoteEditor extends nosuper(HP) {
             hoverEl.addEventListener("mousedown", this.setActive);
         }
         // custom logic begin
-        popovers.set(this.hoverEl, this);
+        popoverEltoSvNoteEditorMap.set(this.hoverEl, this);
         this.hoverEl.addClass("dn-editor");
         this.containerEl = this.hoverEl.createDiv("dn-content");
         this.buildWindowControls();
@@ -513,7 +506,7 @@ export class ScribeningNoteEditor extends nosuper(HP) {
 
         if (targetEl) {
             const parent = targetEl.matchParent(".dn-leaf-view");
-            if (parent) popovers.get(parent)?.transition();
+            if (parent) popoverEltoSvNoteEditorMap.get(parent)?.transition();
         }
 
         this.onHide();

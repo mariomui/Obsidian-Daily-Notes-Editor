@@ -1,7 +1,7 @@
 // This view is registersed in the plugin. When we register a factory function, that function utilizes this viewcontroller to craft the instance
 import ScribeningEditorView from "@src/component/ScribeningEditorView.svelte";
 import ScribeningPlugin from "@src/main";
-import type { TimeRange, TimeField } from "@src/types/time";
+import type { TimeRange, SortField } from "@src/types/time.t";
 import { getBasenameOfFolderPath } from "@src/utils";
 import {
     type WorkspaceLeaf,
@@ -10,48 +10,29 @@ import {
     type TAbstractFile,
     TFile,
     Menu,
-    Modal,
-    type App,
-    ButtonComponent,
 } from "obsidian";
 import {
     SCRIBENING_NOTE_VIEW_TYPE,
     SELECTION_MODES,
-    SORT_BYS,
-} from "./ScribeningNoteView.c";
-import type { SelectionModeValue } from "./ScribeningNoteView.t";
+    type ScribeningNoteViewState,
+    type SelectionModeValue,
+    type SortBysValue,
+} from "./ScribeningNoteView.t";
 
 export function isEmebeddedLeaf(leaf: WorkspaceLeaf) {
     // Work around missing enhance.js API by checking match condition instead of looking up parent
     return (leaf as any).containerEl.matches(".dn-leaf-view");
 }
 
-type ScribeningNoteViewState =
-    | {
-          customRange: { start: Date; end: Date } | null;
-          selectedDaysRange: TimeRange;
-          selectionMode: SelectionModeValue;
-          target: string;
-          timeField: TimeField;
-          selectedRange?: TimeRange;
-      }
-    | Record<string, unknown>;
-
-type SortBysValue = (typeof SORT_BYS)[keyof typeof SORT_BYS];
 export class ScribeningNoteView extends ItemView {
-    view: ScribeningEditorView; // this is the svelte file
+    svEditorView: ScribeningEditorView; // this is the svelte file
     plugin: ScribeningPlugin;
     scope: Scope; // For keyboard shortcuts
 
     selectedDaysRange: TimeRange = "all";
     selectionMode: SelectionModeValue = "daily";
     target: string = "";
-    timeField: SortBysValue = "name";
-
-    customRange: {
-        start: Date;
-        end: Date;
-    } | null = null;
+    sortField: SortBysValue = "name";
 
     constructor(leaf: WorkspaceLeaf, plugin: ScribeningPlugin) {
         super(leaf);
@@ -101,33 +82,20 @@ export class ScribeningNoteView extends ItemView {
             "on open, this will be called whenever i create a new file"
         );
         // view is ScribeningEditorView
-        if (file instanceof TFile) this.view.fileCreate(file);
+        if (file instanceof TFile) this.svEditorView.fileCreate(file);
     };
 
     handleFileDelete = (file: TAbstractFile) => {
-        if (file instanceof TFile) this.view.fileDelete(file);
+        if (file instanceof TFile) this.svEditorView.fileDelete(file);
     };
 
-    setSelectedRange(range: TimeRange) {
-        this.selectedDaysRange = range;
-        if (this.view) {
-            if (range === "custom") {
-                this.view.$set({
-                    selectedRange: range,
-                    customRange: this.customRange,
-                });
-            } else {
-                this.view.$set({ selectedRange: range });
-            }
-        }
-    }
-
-    setSelectionMode(mode: "daily" | "folder" | "tag", target: string = "") {
+    setSelectionMode(mode: SelectionModeValue, target: string = "") {
         this.selectionMode = mode;
         this.target = target;
-
-        if (this.view) {
-            this.view.$set({
+        const svEditorView = this.svEditorView;
+        // ScribeningEditorView
+        if (svEditorView) {
+            this.svEditorView.$set({
                 selectionMode: mode,
                 target: target,
             });
@@ -135,7 +103,7 @@ export class ScribeningNoteView extends ItemView {
     }
 
     saveCurrentSelectionAsPreset() {
-        if (this.selectionMode !== "daily" && this.target) {
+        if (this.target) {
             // Check if this preset already exists
             const existingPresetIndex = this.plugin.settings.preset.findIndex(
                 (p) => p.type === this.selectionMode && p.target === this.target
@@ -159,44 +127,35 @@ export class ScribeningNoteView extends ItemView {
             ...state,
             selectionMode: this.selectionMode,
             target: this.target,
-            timeField: this.timeField,
+            sortField: this.sortField,
             selectedRange: this.selectedDaysRange,
-            customRange: this.customRange,
         };
     }
 
     async setState(state: unknown, result?: any): Promise<void> {
         await super.setState(state, result);
         // Handle our custom state properties if they exist
-        if (state && typeof state === "object" && !this.view) {
+        if (state && typeof state === "object" && !this.svEditorView) {
             const customState = state as {
                 selectionMode?: SelectionModeValue;
                 target?: string;
-                timeField?: SortBysValue;
-                selectedRange?: TimeRange;
-                customRange?: { start: Date; end: Date } | null;
+                sortField?: SortBysValue;
             };
 
             if (customState.selectionMode)
                 this.selectionMode = customState.selectionMode;
             if (customState.target) this.target = customState.target;
-            if (customState.timeField) this.timeField = customState.timeField;
-            if (customState.selectedRange)
-                this.selectedDaysRange = customState.selectedRange;
-            if (customState.customRange)
-                this.customRange = customState.customRange;
+            if (customState.sortField) this.sortField = customState.sortField;
 
             // This is the render function. The whole point is to pass the itemview's content el to the Svelte File so that it can mount it.
-            this.view = new ScribeningEditorView({
+            this.svEditorView = new ScribeningEditorView({
                 target: this.contentEl,
                 props: {
                     plugin: this.plugin,
                     leaf: this.leaf,
-                    selectedRange: this.selectedDaysRange,
-                    customRange: this.customRange,
                     selectionMode: this.selectionMode,
                     target: this.target,
-                    timeField: this.timeField,
+                    sortField: this.sortField,
                 },
             });
             // this.counter = mount(Counter, {
@@ -206,7 +165,7 @@ export class ScribeningNoteView extends ItemView {
             //   }
             // });
 
-            this.app.workspace.onLayoutReady(this.view.tick.bind(this));
+            this.app.workspace.onLayoutReady(this.svEditorView.tick.bind(this));
 
             // this.registerInterval(
             //     window.setInterval(async () => {
@@ -216,15 +175,16 @@ export class ScribeningNoteView extends ItemView {
         }
     }
 
-    setTimeField(field: TimeField) {
-        this.timeField = field;
-        if (this.view) {
-            this.view.$set({ timeField: field });
+    /**
+     * Sets the current sort field and updates the view with the new field.
+     *
+     * @param field - The field to sort by.
+     */
+    setSortField(field: SortField): void {
+        this.sortField = field;
+        if (this.svEditorView) {
+            this.svEditorView.$set({ sortField: field });
         }
-    }
-
-    openDailyNoteEditor() {
-        this.plugin.openScriveningNoteEditor();
     }
 
     async onOpen(): Promise<void> {
@@ -232,16 +192,18 @@ export class ScribeningNoteView extends ItemView {
             // do-nothing
         });
 
-        this.addAction("clock", "Select time field", (e) => {
+        const LUCIDE_CLOCK = "clock";
+        // https://docs.obsidian.md/Reference/TypeScript+API/ItemView/addAction
+        this.addAction(LUCIDE_CLOCK, "Select Sort field", (e) => {
             const menu = new Menu();
 
             // Add time field selection options
-            const addTimeFieldOption = (title: string, field: TimeField) => {
+            const addTimeFieldOption = (title: string, field: SortField) => {
                 menu.addItem((item) => {
                     item.setTitle(title);
-                    item.setChecked(this.timeField === field);
+                    item.setChecked(this.sortField === field);
                     item.onClick(() => {
-                        this.setTimeField(field);
+                        this.setSortField(field);
                     });
                 });
             };
@@ -375,242 +337,19 @@ export class ScribeningNoteView extends ItemView {
         // });
 
         this.addAction("refresh", "Refresh", () => {
-            if (this.view) {
+            if (this.svEditorView) {
                 // Tell the Svelte component to check for daily notes
-                this.view.check();
+                this.svEditorView.check();
 
                 // Update the view to get the latest files
-                this.view.tick();
+                this.svEditorView.tick();
 
                 // Force a refresh of the file list
-                this.view.$set({
-                    selectedRange: this.selectedDaysRange,
-                    customRange: this.customRange,
-                });
             }
         });
 
         this.app.vault.on("create", this.handleFileCreate);
         this.app.vault.on("delete", this.handleFileDelete);
-    }
-
-    onPaneMenu(
-        menu: Menu,
-        source: "more-options" | "tab-header" | string
-    ): void {
-        if (source === "tab-header" || source === "more-options") {
-            menu.addItem((item) => {
-                // @ts-ignore
-                item.setIcon(this.leaf.pinned ? "pin-off" : "pin");
-                // @ts-ignore
-                item.setTitle(this.leaf.pinned ? "Unpin" : "Pin");
-                item.onClick(() => {
-                    this.leaf.togglePinned();
-                });
-            });
-        }
-    }
-
-    /**
-     * Refresh the view for a new day
-     * This is called when the date changes (e.g., after midnight)
-     */
-    public refreshForNewDay(): void {
-        // If we're in daily note mode, we need to refresh the view
-        // to show the current day's note
-        if (this.selectionMode === "daily") {
-            // Reset the view properties to trigger a reload
-            if (this.view) {
-                // Tell the Svelte component to check for daily notes
-                this.view.check();
-
-                // Update the view to get the latest files
-                this.view.tick();
-
-                // Force a refresh of the file list
-                this.view.$set({
-                    selectedRange: this.selectedDaysRange,
-                    customRange: this.customRange,
-                });
-            }
-        }
-    }
-}
-
-class CustomRangeModal extends Modal {
-    saveCallback: (range: { start: Date; end: Date }) => void;
-    startDate: Date;
-    endDate: Date;
-
-    constructor(
-        app: App,
-        saveCallback: (range: { start: Date; end: Date }) => void
-    ) {
-        super(app);
-        this.saveCallback = saveCallback;
-        this.startDate = new Date();
-        this.endDate = new Date();
-    }
-
-    onOpen() {
-        const { contentEl } = this;
-
-        contentEl.createEl("h2", { text: "Select Custom Date Range" });
-
-        const startDateContainer = contentEl.createEl("div", {
-            cls: "custom-range-date-container",
-        });
-        startDateContainer.createEl("span", { text: "Start Date: " });
-        const startDatePicker = startDateContainer.createEl("input", {
-            type: "date",
-            value: this.formatDate(this.startDate),
-        });
-        startDatePicker.addEventListener("change", (e) => {
-            this.startDate = new Date((e.target as HTMLInputElement).value);
-        });
-
-        const endDateContainer = contentEl.createEl("div", {
-            cls: "custom-range-date-container",
-        });
-        endDateContainer.createEl("span", { text: "End Date: " });
-        const endDatePicker = endDateContainer.createEl("input", {
-            type: "date",
-            value: this.formatDate(this.endDate),
-        });
-        endDatePicker.addEventListener("change", (e) => {
-            this.endDate = new Date((e.target as HTMLInputElement).value);
-        });
-
-        const buttonContainer = contentEl.createEl("div", {
-            cls: "custom-range-button-container",
-        });
-
-        new ButtonComponent(buttonContainer)
-            .setButtonText("Cancel")
-            .onClick(() => {
-                this.close();
-            });
-
-        new ButtonComponent(buttonContainer)
-            .setButtonText("Confirm")
-            .setCta()
-            .onClick(() => {
-                this.saveCallback({
-                    start: this.startDate,
-                    end: this.endDate,
-                });
-                this.close();
-            });
-    }
-
-    formatDate(date: Date): string {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-    }
-
-    onClose() {
-        this.contentEl.empty();
-    }
-}
-
-class SelectTargetModal extends Modal {
-    saveCallback: (target: string) => void;
-    mode: "folder" | "tag";
-    targetInput: HTMLInputElement;
-
-    constructor(
-        app: App,
-        mode: "folder" | "tag",
-        saveCallback: (target: string) => void
-    ) {
-        super(app);
-        this.mode = mode;
-        this.saveCallback = saveCallback;
-    }
-
-    onOpen() {
-        const { contentEl } = this;
-        contentEl.empty();
-
-        contentEl.createEl("h2", {
-            text: this.mode === "folder" ? "Select Folder" : "Select Tag",
-        });
-
-        const form = contentEl.createEl("form");
-        form.addEventListener("submit", (e) => {
-            e.preventDefault();
-            this.save();
-        });
-
-        const targetSetting = form.createDiv();
-        targetSetting.addClass("setting-item");
-
-        const targetSettingInfo = targetSetting.createDiv();
-        targetSettingInfo.addClass("setting-item-info");
-
-        targetSettingInfo.createEl("div", {
-            text: this.mode === "folder" ? "Folder Path" : "Tag Name",
-            cls: "setting-item-name",
-        });
-
-        targetSettingInfo.createEl("div", {
-            text:
-                this.mode === "folder"
-                    ? "Enter the path to the folder (e.g., 'folder/subfolder')"
-                    : "Enter the tag name without the '#' (e.g., 'tag')",
-            cls: "setting-item-description",
-        });
-
-        const targetSettingControl = targetSetting.createDiv();
-        targetSettingControl.addClass("setting-item-control");
-
-        this.targetInput = targetSettingControl.createEl("input", {
-            type: "text",
-            value: "",
-        });
-        this.targetInput.addClass("target-input");
-
-        const footerEl = contentEl.createDiv();
-        footerEl.addClass("modal-button-container");
-
-        footerEl
-            .createEl("button", {
-                text: "Cancel",
-                cls: "mod-warning",
-                attr: {
-                    type: "button",
-                },
-            })
-            .addEventListener("click", () => {
-                this.close();
-            });
-
-        footerEl
-            .createEl("button", {
-                text: "Save",
-                cls: "mod-cta",
-                attr: {
-                    type: "submit",
-                },
-            })
-            .addEventListener("click", (e) => {
-                e.preventDefault();
-                this.save();
-            });
-    }
-
-    save() {
-        const target = this.targetInput.value.trim();
-        if (target) {
-            this.saveCallback(target);
-            this.close();
-        }
-    }
-
-    onClose() {
-        const { contentEl } = this;
-        contentEl.empty();
+        this.leaf.togglePinned();
     }
 }

@@ -1,7 +1,12 @@
 <script lang="ts">
     // import type DailyNoteViewPlugin from "../dailyNoteViewIndex";
     import type ScribeningViewPlugin from "@src/main";
-    import { MarkdownView, type TAbstractFile, TFile, type WorkspaceLeaf } from "obsidian";
+    import {
+        MarkdownView,
+        type TAbstractFile,
+        TFile,
+        type WorkspaceLeaf,
+    } from "obsidian";
     import { spawnLeafView } from "@src/controllers/scribening-leaf-view";
     import { onDestroy, onMount } from "svelte";
 
@@ -19,10 +24,10 @@
     let createdLeaf: WorkspaceLeaf;
     let unloadTimeout: number | null = null;
     let editorHeight: number = 100; // Default minimum height
-    
+
     // Track if this component is being destroyed
     let isDestroying = false;
-    
+
     // Track if the note is collapsed
     let isCollapsed: boolean = false;
 
@@ -54,7 +59,7 @@
         if (!(file instanceof TFile)) return;
         if (rendered) return;
         if (isDestroying) return;
-        
+
         // Clear any pending unload
         if (unloadTimeout) {
             window.clearTimeout(unloadTimeout);
@@ -65,7 +70,7 @@
             // Use safe type checking before accessing basename
             const fileName = file instanceof TFile ? file.basename : "unknown";
             console.log(`Loading editor for ${fileName}`);
-            
+
             [createdLeaf] = spawnLeafView(plugin, editorEl, leaf);
             createdLeaf.setPinned(true);
 
@@ -83,21 +88,23 @@
                         showSearch: false,
                         searchQuery: "",
                         backlinkCollapsed: false,
-                        unlinkedCollapsed: true
-                    }
-                }
+                        unlinkedCollapsed: true,
+                    },
+                },
             });
             createdLeaf.parentLeaf = leaf;
 
             rendered = true;
-            
+
             // Set a small timeout to allow the editor to render completely
             const timeout = window.setTimeout(() => {
                 if (createdLeaf && containerEl) {
                     // Get the actual height of the editor content
-                    if(!(createdLeaf.view instanceof MarkdownView)) return; 
+                    if (!(createdLeaf.view instanceof MarkdownView)) return;
                     // @ts-ignore
-                    const actualHeight = createdLeaf.view.editMode?.editor?.cm?.dom.innerHeight;
+                    const actualHeight =
+                        createdLeaf.view["editMode"]?.editor?.cm?.dom
+                            .innerHeight;
                     if (actualHeight > 0) {
                         editorHeight = actualHeight;
                         // Apply the height to the container
@@ -111,13 +118,13 @@
             console.error("Error creating leaf view:", error);
         }
     }
-    
+
     // Schedule unloading the editor with a delay to prevent flickering
     function scheduleUnload() {
         if (unloadTimeout) {
             window.clearTimeout(unloadTimeout);
         }
-        
+
         // Use a longer timeout to prevent frequent load/unload cycles
         unloadTimeout = window.setTimeout(() => {
             if (!shouldRender && rendered) {
@@ -125,28 +132,28 @@
             }
         }, 1000);
     }
-    
+
     // Unload the editor to free up resources
     function unloadEditor() {
         if (!rendered || !createdLeaf) return;
-        
+
         try {
             // Use safe type checking before accessing basename
             const fileName = file instanceof TFile ? file.basename : "unknown";
             console.log(`Unloading editor for ${fileName}`);
-            
+
             // Detach the leaf
             if (createdLeaf.detach) {
                 createdLeaf.detach();
             }
-            
+
             // Clear the editor element
             if (editorEl) {
                 editorEl.empty();
             }
-            
+
             rendered = false;
-            
+
             // Keep the container height to prevent scroll jumps
             // The height will be maintained by the min-height we set earlier
         } catch (error) {
@@ -168,32 +175,65 @@
             editor.focus();
         }
     }
-    
+
     // Toggle collapse/expand state
     function toggleCollapse() {
         isCollapsed = !isCollapsed;
     }
 </script>
 
-<div class="daily-note-container" data-id='dn-editor-{file.path}' bind:this={containerEl} style="min-height: {isCollapsed ? 'auto' : editorHeight + 'px'};">
+<div
+    class="daily-note-container"
+    data-id="dn-editor-{file.path}"
+    bind:this={containerEl}
+    style="min-height: {isCollapsed ? 'auto' : editorHeight + 'px'};"
+>
     <div class="daily-note">
         {#if title}
             <div class="daily-note-title inline-title">
                 <!-- Collapse/Expand button -->
                 <!-- svelte-ignore a11y-interactive-supports-focus -->
                 <!-- svelte-ignore a11y-click-events-have-key-events -->
-                <span role="button" data-collapsed={isCollapsed} class="collapse-button" on:click={toggleCollapse} title={isCollapsed ? "Expand" : "Collapse"}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>
+                <span
+                    role="button"
+                    data-collapsed={isCollapsed}
+                    class="collapse-button"
+                    on:click={toggleCollapse}
+                    title={isCollapsed ? "Expand" : "Collapse"}
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="lucide lucide-chevron-down"
+                        ><path d="m6 9 6 6 6-6" /></svg
+                    >
                 </span>
                 <!-- svelte-ignore a11y-interactive-supports-focus -->
                 <!-- svelte-ignore a11y-click-events-have-key-events -->
-                <span role="link" class="clickable-link" on:click={handleFileIconClick} data-title={title}>{title}</span>
-                
-                
-                
+                <span
+                    role="link"
+                    class="clickable-link"
+                    on:click={handleFileIconClick}
+                    data-title={title}>{title}</span
+                >
             </div>
         {/if}
-        <div class="daily-note-editor" data-collapsed={isCollapsed} aria-hidden="true" bind:this={editorEl} data-title={title} on:click={handleEditorClick}>
+        <!-- svelte-ignore a11y-no-static-element-interactions -->
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <div
+            class="daily-note-editor"
+            data-collapsed={isCollapsed}
+            bind:this={editorEl}
+            data-title={title}
+            on:click={handleEditorClick}
+        >
             {#if !rendered && shouldRender}
                 <div class="editor-placeholder">Loading...</div>
             {/if}
@@ -235,7 +275,7 @@
         color: var(--text-muted);
     }
 
-    .daily-note .collapse-button:hover  {
+    .daily-note .collapse-button:hover {
         color: var(--text-normal);
     }
 
@@ -267,8 +307,12 @@
         justify-content: start;
         align-items: center;
         width: 100%;
-        padding-left: calc(calc(100% - var(--file-line-width)) / 2 - var(--size-4-2));
-        padding-right: calc(calc(100% - var(--file-line-width)) / 2 - var(--size-4-2));
+        padding-left: calc(
+            calc(100% - var(--file-line-width)) / 2 - var(--size-4-2)
+        );
+        padding-right: calc(
+            calc(100% - var(--file-line-width)) / 2 - var(--size-4-2)
+        );
         margin-top: var(--size-4-8);
 
         gap: var(--size-4-2);
@@ -283,7 +327,7 @@
         color: var(--color-accent);
         text-decoration: underline;
     }
-    
+
     .editor-placeholder {
         display: flex;
         justify-content: center;
@@ -292,7 +336,7 @@
         color: var(--text-muted);
         font-style: italic;
     }
-    
+
     .collapse-button {
         cursor: pointer;
         display: flex;
@@ -304,7 +348,7 @@
         color: var(--text-muted);
         transition: background-color 0.2s ease;
     }
-    
+
     .collapse-button:hover {
         /* background-color: var(--background-modifier-hover); */
         color: var(--text-normal);

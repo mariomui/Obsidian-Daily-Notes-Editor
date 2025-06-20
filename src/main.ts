@@ -1,8 +1,9 @@
-// import { createUpDownNavigationExtension } from "@src/lib/UpAndDownNavigate";
 import { ScribeningNoteView } from "@src/controllers/ScribeningNoteView";
-import { SCRIBENING_NOTE_VIEW_TYPE } from "./controllers/ScribeningNoteView.c";
-
-import type { TimeField } from "@src/types/time";
+import { ScribeningSettingTab } from "@src/controllers/ScribeningSettings";
+import "@src/style/index.css";
+import type { SortField } from "@src/types/time.t";
+import { SORT_BYS } from "@src/types/time.t";
+import { logger } from "@src/utils";
 import { around } from "monkey-around";
 import {
     type OpenViewState,
@@ -12,25 +13,28 @@ import {
     TFolder,
     Workspace,
     WorkspaceContainer,
-    WorkspaceItem,
+    type WorkspaceItem,
     WorkspaceLeaf,
 } from "obsidian";
-
-// import { DAILY_NOTE_VIEW_TYPE, DailyNoteView } from "./dailyNoteView";
-
-import "@src/style/index.css";
 import {
-    ScribeningNoteEditor,
     checkIsScribeningNoteLeaf,
+    ScribeningNoteEditor,
 } from "./controllers/scribening-leaf-view";
+import {
+    SCRIBENING_NOTE_VIEW_TYPE,
+    type ScribeningNoteViewState,
+} from "./controllers/ScribeningNoteView.t";
 import {
     // emojiListField,
     every250WordsPlugin,
-    // panelExtension,
-} from "./lib/HighlightPlugin.cm";
-// import { setActiveEditorExt } from "./component/SetActiveEditor";
-// import { addIconList } from "./utils/icon";
+    pluginField,
+    wordField,
+} from "./lib/codemirror-addons";
 
+// # CONSTS
+const MENU_ITEM_DATA_ATTRIBUTE = "data-scribening-open-folder-menu-item";
+
+const RECENT_FILES_PLUGIN_NAME = "recent-files-obsidian";
 export default class Scribening extends Plugin {
     private view: ScribeningNoteView; // this is always populated with a ScribeningNoteView.
     lastActiveFile: TFile;
@@ -45,74 +49,60 @@ export default class Scribening extends Plugin {
     };
 
     experimentWithCM() {
-        this.registerEditorExtension([every250WordsPlugin]);
+        this.registerEditorExtension([
+            pluginField.init(() => this),
+            every250WordsPlugin,
+            wordField,
+        ]);
     }
     async onload() {
         // load data into data.json
         await this.loadSettings();
+        this.addSettingTab(new ScribeningSettingTab(this.app, this));
 
         this.experimentWithCM();
 
-        this.patchWorkspace();
-        this.patchWorkspaceLeaf();
-
-        // addIconList();
-        // this.lastCheckedDay = (moment as any)().format("YYYY-MM-DD");
-
-        // Register the up and down navigation extension
-        // this.settings.useArrowUpOrDownToNavigate &&
-        //     this.registerEditorExtension([
-        //         createUpDownNavigationExtension({
-        //             app: this.app,
-        //             plugin: this,
-        //         }),
-        //         // setActiveEditorExt({ app: this.app, plugin: this }),
-        //     ]);
+        this.initWorkspacePatch();
+        this.initWorkspaceLeafPatch();
 
         // Register Factory Function so That Obsidian can use it to create future instances
         this.registerView(
             SCRIBENING_NOTE_VIEW_TYPE,
-            (leaf: WorkspaceLeaf) =>
-                (this.view = new ScribeningNoteView(leaf, this))
+            (leaf: WorkspaceLeaf) => new ScribeningNoteView(leaf, this)
         );
 
+        const SV_OPEN_CMD_LABEL = "Open Daily Note Editor";
+        const SV_OPEN_CMD_ID = "open-daily-note-editor";
         this.addCommand({
-            id: "open-daily-note-editor",
-            name: "Open Daily Note Editor",
+            id: SV_OPEN_CMD_ID,
+            name: SV_OPEN_CMD_LABEL,
             callback: () => this.openScriveningNoteEditor(),
         });
 
         this.initCssRules();
 
-        // Create daily note and open the Daily Notes Editor on startup if enabled
-        // if (this.settings.createAndOpenOnStartup) {
-        //     this.app.workspace.onLayoutReady(async () => {
-        //         // First ensure today's daily note exists
-        //         await this.ensureTodaysDailyNoteExists();
-        //         if (
-        //             this.app.workspace.getLeavesOfType(SCRIBENING_NOTE_VIEW_TYPE)
-        //                 .length > 0
-        //         )
-        //             return;
-        //         // Then open the Daily Notes Editor
-        //         await this.openDailyNoteEditor();
-        //     });
-        // }
+        this.hydrateContextMenu();
 
-        // Also check periodically (every 15 minutes) for day changes
-        // this.registerInterval(
-        //     window.setInterval(this.checkDayChange.bind(this), 1000 * 60 * 15)
-        // );
+        if (__MODE__ === "development" && __SCRIBENING_REL_TEST_FOLDER__) {
+            setTimeout(() => {
+                this.openFolderView(
+                    __SCRIBENING_REL_TEST_FOLDER__,
+                    SORT_BYS.NAME
+                );
+            });
+        }
+    }
 
-        this.app.workspace.on("file-menu", (menu, file, source, leaf) => {
+    hydrateContextMenu(): void {
+        this.app.workspace.on("file-menu", (menu, file) => {
             const toRemoves: any[] = [];
             if (file instanceof TFolder) {
                 // item must be remembered so that the onClick can be rewritten.
                 // This is especially on Hotreload to avoid multiple menuItems being set.
                 for (const item of menu.items) {
-                    const isItemPreviouslyCreated =
-                        item.dom.getAttribute("data-open-daily-note") ===
-                        "true";
+                    const isItemPreviouslyCreated = item.dom.hasAttribute(
+                        MENU_ITEM_DATA_ATTRIBUTE
+                    );
                     if (isItemPreviouslyCreated) {
                         toRemoves.push(item);
                     }
@@ -124,7 +114,7 @@ export default class Scribening extends Plugin {
                         item.onClick(() => {
                             this.openFolderView(file.path);
                         });
-                        item.dom.setAttribute("data-open-daily-note", "true");
+                        item.dom.setAttribute(MENU_ITEM_DATA_ATTRIBUTE, "");
                     });
                 }
                 for (const menuItem of toRemoves) {
@@ -136,8 +126,9 @@ export default class Scribening extends Plugin {
                 }
             }
         });
-    }
 
+        return;
+    }
     onunload() {
         this.app.workspace.detachLeavesOfType(SCRIBENING_NOTE_VIEW_TYPE);
 
@@ -152,15 +143,16 @@ export default class Scribening extends Plugin {
         workspace.revealLeaf(leaf);
     }
 
-    async openFolderView(folderPath: string, timeField: TimeField = "mtime") {
+    async openFolderView(
+        folderPath: string,
+        sortField: SortField = SORT_BYS.NAME
+    ) {
         const workspace = this.app.workspace;
         // create new leaf
-        // ? Why is this leaf Scribening Note after the fact?
         const leaf = workspace.getLeaf(true);
-        // this leaf automatically becomes a SCRIBENING NOTE VIEW LEAF
 
         await leaf.setViewState({ type: SCRIBENING_NOTE_VIEW_TYPE });
-
+        console.log(leaf.getViewState(), "viewstate");
         // this.app.workspace.getActiveViewOfType(
         //     MarkdownView as unknown as new (...args: any[]) => View
         // );
@@ -170,8 +162,8 @@ export default class Scribening extends Plugin {
             ?.getLeavesOfType("file-explorer")
             .at(0)?.view;
         if (fileExplorerView) {
-            const prevViewState = fileExplorerView.getState();
-            const prevAutoRevealState = prevViewState.autoReveal;
+            // const prevViewState = fileExplorerView.getState();
+            // const prevAutoRevealState = prevViewState.autoReveal;
             fileExplorerView["setAutoReveal"](false);
 
             // TODO save the original state of autoreveal to revert it back when view.onClose
@@ -182,51 +174,48 @@ export default class Scribening extends Plugin {
         // prep the view;
         const view = leaf.view as ScribeningNoteView;
         view.setSelectionMode("folder", folderPath);
-        view.setTimeField(timeField);
+        this.setStateTo<ScribeningNoteViewState, keyof ScribeningNoteViewState>(
+            view,
+            {
+                prop: "sortField",
+                val: sortField,
+            }
+        );
         workspace.revealLeaf(leaf);
     }
-
-    // async openTagView(tagName: string, timeField: TimeField = "mtime") {
-    //     const workspace = this.app.workspace;
-    //     const leaf = workspace.getLeaf(true);
-    //     await leaf.setViewState({ type: SCRIBENING_NOTE_VIEW_TYPE });
-
-    //     // Get the view and set the selection mode to tag
-    //     const view = leaf.view as ScribeningNoteView;
-    //     view.setSelectionMode("tag", tagName);
-    //     view.setTimeField(timeField);
-
-    //     workspace.revealLeaf(leaf);
-    // }
-
-    // async ensureTodaysDailyNoteExists() {
-    //     try {
-    //         const currentDate = (moment as any)();
-    //         const allDailyNotes = getAllDailyNotes();
-    //         const currentDailyNote = getDailyNote(currentDate, allDailyNotes);
-
-    //         if (!currentDailyNote) {
-    //             await createDailyNote(currentDate);
-    //         }
-    //     } catch (error) {
-    //         console.error("Failed to create daily note:", error);
-    //     }
-    // }
+    setStateTo<T, K extends keyof T>(
+        ctx: T,
+        fig: { prop: K; val: T[K] }
+    ): void {
+        ctx[fig.prop] = fig.val;
+    }
 
     initCssRules() {
+        const SV_HIDE_YAML_CLAZZ = "daily-notes-hide-frontmatter";
+        const SV_HIDE_BACKLINKS_CLAZZ = "daily-notes-hide-backlinks";
         document.body.toggleClass(
-            "daily-notes-hide-frontmatter",
+            SV_HIDE_YAML_CLAZZ,
             this.settings.hideFrontmatter
         );
         document.body.toggleClass(
-            "daily-notes-hide-backlinks",
+            SV_HIDE_BACKLINKS_CLAZZ,
             this.settings.hideBacklinks
         );
     }
 
-    patchWorkspace() {
-        let layoutChanging = false;
+    /**
+     * Patches the Obsidian Workspace prototype
+     * Registers an uninstaller to revert these changes when needed.
+     * - Wraps `changeLayout` to toggle a flag during layout transitions.
+     * - Wraps `iterateLeaves` to prevent closing leaves during layout changes and to support both legacy and current API signatures.
+     *
+     */
+    initWorkspacePatch(): void {
+        let isWorkspaceLayoutChanging = false;
+        type WspaceIterateLeaves = Workspace["iterateLeaves"];
+
         const uninstaller = around(Workspace.prototype, {
+            // TODO What does this do?
             // somemethod: function somemethod(oldmethod)  { ... }
             // getActiveViewOfType: (oldmethod) =>
             //     function (func: any) {
@@ -249,27 +238,43 @@ export default class Scribening extends Plugin {
             //         return viewInstance;
             //     },
             // Toggle isLayoutChangeInProgress when Workspace changes layouts
-            changeLayout(old) {
+
+            /**
+             * Sets the variable allowing us to know if the workspace layout has finished its process of opening the leaves of a saved session.
+             *
+             * @param o_changeLayout - The original layout-changing function to wrap.
+             * @returns An async function that takes the workspace and manages the layout change state.
+             */
+            changeLayout(o_changeLayout) {
                 return async function (workspace: unknown) {
-                    layoutChanging = true;
+                    isWorkspaceLayoutChanging = true;
                     // changeLayout(workspace: any): Promise<void>;
 
                     try {
                         // Don't consider hover popovers part of the workspace while it's changing
-                        await old.call(this, workspace);
+                        await o_changeLayout.call(this, workspace);
                     } finally {
-                        layoutChanging = false;
+                        isWorkspaceLayoutChanging = false;
                     }
                 };
             },
-            iterateLeaves(old): Workspace["iterateLeaves"] {
+            /**
+             * Override `iterateLeaves` for API compat and to stop the closing of open leaves when workspace layout is int the process of changing.
+             * Supports both legacy and current Obsidian API signatures.
+             * @param o_iterateLeaves The original iterateLeaves method to wrap.
+             * @returns The wrapped iterateLeaves function.
+             */
+            iterateLeaves(o_iterateLeaves): WspaceIterateLeaves {
                 //iterateLeaves is a recursive function that returns a boolean
                 //iterateLeaves is called by all the iterate* functions
                 // getLeavesOfType searches for a specific viewtype
                 type leafIterator = (item: WorkspaceLeaf) => boolean | void;
+
                 return function (arg1, arg2) {
                     // Fast exit if desired leaf found
-                    if (old.call(this, arg1, arg2)) return true;
+                    if (o_iterateLeaves.call(this, arg1, arg2)) {
+                        return true;
+                    }
 
                     // Handle old/new API parameter swap
                     // # Handle old/new API parameter swap
@@ -282,9 +287,9 @@ export default class Scribening extends Plugin {
                     ) as leafIterator;
                     // ## if arg1 a function, then the parent is arg2 (aka undefined)
                     // ## if arg1 is an object then the parent is arg1 (aka parent of the container type object)
-                    const parent: WorkspaceItem = (
-                        checkIsArgAFunction(arg1) ? arg2 : arg1
-                    ) as WorkspaceItem;
+                    const parent: WorkspaceItem = checkIsArgAFunction(arg1)
+                        ? arg2
+                        : arg1;
 
                     // iterateAllLeaves and iterateRootLeaves call iterateLeaves with an object in the first parameter. the arg1/parent then has a value.
 
@@ -294,7 +299,7 @@ export default class Scribening extends Plugin {
                     // ### getLeavesByType is called.
                     // ### layout is changing
                     if (!parent) return false;
-                    if (layoutChanging) return false; // Don't let HEs close during workspace change
+                    if (isWorkspaceLayoutChanging) return false; // Don't let HEs close during workspace change
 
                     // ## arg1 Exists, ar2 Exists -> continue
                     // ## arg1 is not a function, and arg 2 is not a function -> continue
@@ -308,12 +313,12 @@ export default class Scribening extends Plugin {
                             (WorkspaceContainer &&
                                 parent instanceof WorkspaceContainer)
                         ) {
-                            for (const popover of ScribeningNoteEditor.popoversForWindow(
+                            for (const popover of ScribeningNoteEditor.fishoutSvNoteEditorFrom(
                                 (parent as WorkspaceContainer).win
                             )) {
                                 // Use old API here for compat w/0.14.x
                                 if (
-                                    old.call(
+                                    o_iterateLeaves.call(
                                         this,
                                         cb as any,
                                         popover.rootSplit as any
@@ -327,11 +332,10 @@ export default class Scribening extends Plugin {
                     }
                     // For some reason when the leaves are all being iterated, don't return a boolean.
                     return false;
-                };
+                } as WspaceIterateLeaves;
             },
             // setActiveLeaf: (next: any) =>
             //     function (leafOrView: WorkspaceLeaf, t?: any) {
-            //         console.log({ t });
             //         if (leafOrView.parentLeaf) {
             //             // active Time is an uncontrolled custom data pegged to a foreign body.
             //             leafOrView.parentLeaf["activeTime"] = 1700000000000;
@@ -349,10 +353,17 @@ export default class Scribening extends Plugin {
             //     },
         });
         this.register(uninstaller);
+        return;
     }
 
-    // Used for patch workspaceleaf pinned behaviors
-    patchWorkspaceLeaf() {
+    /**
+     // Used for patch workspaceleaf pinned behaviors
+     * Patches the WorkspaceLeaf prototype to customize behavior for reading view, pinning,
+     * and file opening events, specifically for "scribening note" leaves.
+     * Prevents certain files from being recorded in recent files and quick switcher plugins.
+     * Registers all patches for automatic cleanup.
+     */
+    initWorkspaceLeafPatch(): void {
         this.register(
             around(WorkspaceLeaf.prototype, {
                 // This allows the new leaf to obtain the ability to get a Reading View.
@@ -372,7 +383,7 @@ export default class Scribening extends Plugin {
                         if (
                             isWorkspaceItemGetRootMatchCurrentLeafRoot === true
                         ) {
-                            console.log({ workspaceItem }, "matched");
+                            logger({ workspaceItem }, "matched");
                             return workspaceItem;
                         }
                         if (
@@ -385,19 +396,21 @@ export default class Scribening extends Plugin {
                         return workspaceItem;
                     };
                 },
-                setPinned(old) {
-                    // report to the plugin when the Leaf pins itself
-                    return function (pinned: boolean) {
-                        old.call(this, pinned);
-                        if (checkIsScribeningNoteLeaf(this) && !pinned)
-                            this.setPinned(true);
-                    };
-                },
+                // setPinned(old): WorkspaceLeaf["setPinned"] {
+                //     // https://docs.obsidian.md/Reference/TypeScript+API/WorkspaceLeaf/setPinned
+                //     // report to the plugin when the Leaf pins itself
+                //     return function (pinned) {
+                //         old.call(this, pinned);
+                //         if (checkIsScribeningNoteLeaf(this) && !pinned) {
+                //             this.setPinned(true);
+                //         }
+                //     };
+                // },
                 openFile(old) {
                     return function (file: TFile, openState?: OpenViewState) {
                         const isRecentFilesPluginEnabled =
                             this.app.plugins.enabledPlugins.has(
-                                "recent-files-obsidian"
+                                RECENT_FILES_PLUGIN_NAME
                             );
                         // open file happens on any file when you click on the title.
                         // This code removes QuickSwitcher from recording you if you click on any note that is a scribening note leaf
@@ -455,27 +468,4 @@ export default class Scribening extends Plugin {
     async saveSettings() {
         await this.saveData(this.settings);
     }
-
-    // private async checkDayChange(): Promise<void> {
-    //     const currentDay = (moment as any)().format("YYYY-MM-DD");
-
-    //     if (currentDay !== this.lastCheckedDay) {
-    //         this.lastCheckedDay = currentDay;
-    //         console.log("Day changed, updating daily notes view");
-
-    //         await this.ensureTodaysDailyNoteExists();
-
-    //         const dailyNoteLeaves = this.app.workspace.getLeavesOfType(
-    //             SCRIBENING_NOTE_VIEW_TYPE
-    //         );
-    //         if (dailyNoteLeaves.length > 0) {
-    //             for (const leaf of dailyNoteLeaves) {
-    //                 const view = leaf.view as ScribeningNoteView;
-    //                 if (view) {
-    //                     view.refreshForNewDay();
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
 }
