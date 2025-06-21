@@ -1,5 +1,5 @@
 import "obsidian";
-import { Plugin, SuggestModal, TFile, View, WorkspaceLeaf } from "obsidian";
+import { SuggestModal, TFile, View, WorkspaceLeaf } from "obsidian";
 
 interface InternalPlugins {
     switcher: QuickSwitcherPlugin;
@@ -173,6 +173,9 @@ declare module "obsidian" {
         };
     }
 
+    /**
+     * Augmented View
+     */
     interface View {
         iconEl: HTMLElement;
         file: TFile;

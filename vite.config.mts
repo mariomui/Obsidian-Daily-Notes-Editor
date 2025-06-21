@@ -7,6 +7,7 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import builtins from "builtin-modules";
 import chalk from "chalk";
 import copyNewer from "copy-newer";
+import { ensureFile, move, pathExists } from "fs-extra";
 import { createReadStream } from "node:fs";
 import { join, resolve as pathresolve } from "node:path";
 import autoPreprocess from "svelte-preprocess";
