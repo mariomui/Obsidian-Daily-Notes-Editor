@@ -14,7 +14,6 @@ import {
 } from "@src/utils/createLogger/createLogger.t";
 import dayjs from "dayjs";
 import pino, { type Logger, type WriteFn } from "pino";
-
 // # LOGIC
 
 let trace_count = 0;
@@ -51,7 +50,9 @@ const baseLogger: Logger = pino({
                 const console_message = [handlePinoWrite(logObj)]
                     .filter(Boolean)
                     .join(" ");
-                console.log(console_message + " " + choice());
+                if (console_message) {
+                    console.log(console_message + " " + choice());
+                }
             } catch (err) {
                 console.warn({ err }, handlePinoWrite.name + " has erred");
             }
@@ -113,9 +114,12 @@ function handlePinoWrite(
     const colored_group = applyColorTo([COLORS.CYAN, $$group]);
     // console.log({ logObj });
     const combined_message = [msg, message].filter(Boolean).join("/");
+
+    // do not apply color since there is a preprocessing effect earlier to apply color to message.
     const colored_message = combined_message
         ? applyColorTo([
-              `${COLORS.WHITE}${BG_COLORS.BG_BLACK}`,
+              //   `${COLORS.WHITE}${BG_COLORS.BG_BLACK}`,
+              "",
               combined_message,
           ])
         : "";
@@ -138,15 +142,21 @@ function handlePinoWrite(
 // ## wrap individual tracers
 
 function createWrapLogMethod(_baseLogger) {
-    return function wrapLogMethod(level) {
+    return function wrapLogMethod(
+        level,
+        wrapLogMethodFig = {
+            cInspectFig: {},
+        }
+    ) {
+        const { cInspectFig } = wrapLogMethodFig;
         return (...args: any[]) => {
+            const defaultStrategy = (v) =>
+                applyColorTo([`${COLORS.WHITE} ${BG_COLORS.BG_BLACK}`, v]);
             const strategyChoices = {
-                object: cInspect,
-                string: (v) => applyColorTo[(COLORS.WHITE, v)],
+                object: (val) => cInspect(val, cInspectFig),
+                string: defaultStrategy,
                 array: JSON.stringify,
             };
-            const defaultStrategy = (val) =>
-                applyColorTo([COLORS.BRIGHT_BLUE, val]);
             const message = args
                 .map((arg) => {
                     const type = getTypeOf(arg);
@@ -173,13 +183,69 @@ function createLogger() {
 type PinoBindings = {
     level: LEVEL_FLAGS_VALUES;
 };
-export function createLoggerV2(fig: { bindings: PinoBindings }) {
-    const bindings = fig.bindings;
-    const wrapLogMethod = createWrapLogMethod(baseLogger.child({}, bindings));
-    return {
+function manuCreateLoggerV2Fig() {
+    return { bindings: { group: "app" }, childOptions: {} };
+}
+const idx = 0;
+export function createLoggerV2(
+    fig: {
+        bindings?: Record<string, any>;
+        childOptions?: Record<string, any>;
+    } = manuCreateLoggerV2Fig()
+) {
+    const { bindings, childOptions } = { ...manuCreateLoggerV2Fig(), ...fig };
+    const wrapLogMethod = createWrapLogMethod(
+        baseLogger.child(bindings, childOptions)
+    );
+    const executedSet = new Set();
+    const base = {
         trace: wrapLogMethod(LEVEL_FLAGS.TRACE),
         info: wrapLogMethod(LEVEL_FLAGS.INFO),
+        infoWithFig: (...args) => {
+            const fig = args.last();
+            const rest = args.slice(0, args.length - 2);
+            const fn = wrapLogMethod(LEVEL_FLAGS.INFO, fig);
+            return fn(...rest);
+        },
+        infoAll: wrapLogMethod(LEVEL_FLAGS.INFO, {
+            cInspectFig: {
+                showHidden: true,
+            },
+        }),
+        infoAllOnce: (...args) => {
+            const func = wrapLogMethod(LEVEL_FLAGS.INFO, {
+                cInspectFig: {
+                    showHidden: true,
+                },
+            });
+            onceIt({ func, message: "infoAllOnce" }, ...args);
+        },
+        traceOnce: (...args) => {
+            const token = args.last();
+            const rest = args.slice(0, args.length - 2);
+            if (executedSet.has(token) === false) {
+                executedSet.add(token);
+                base.trace(...rest, "traceOnce");
+            }
+        },
+        infoOnce: (...args) => {
+            onceIt({ func: base.info, message: "infoOnce" }, ...args);
+        },
     };
+    function onceIt(fig, ...args) {
+        const { func, message } = fig;
+        const token = args.last();
+        const rest = args.slice(0, args.length - 2);
+        if (executedSet.has(token) === false) {
+            executedSet.add(token);
+            func(...rest, message);
+        }
+    }
+    return base;
 }
 
+export function getRandomIntToken(max = 1000) {
+    return Math.floor(Math.random() * max);
+}
 export const logger = createLogger(); // instance and share.
+export const globalLogger = createLoggerV2();
