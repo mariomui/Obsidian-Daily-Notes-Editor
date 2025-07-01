@@ -46,10 +46,12 @@ export function checkIsScribeningNoteLeaf(
     return leaf.containerEl.matches(identifier);
 }
 
+type NoSuperBase<T> = new (...args: unknown[]) => T;
+type NoSuperReturn<T> = new () => T;
 /**
  * no super is a way to borrow the Component functions but not
  */
-function nosuper<T>(base: new (...args: unknown[]) => T): new () => T {
+function nosuper<T>(base: NoSuperBase<T>): NoSuperReturn<T> {
     const derived = function () {
         // create a new object
         return Object.setPrototypeOf(new Component(), new.target.prototype);
