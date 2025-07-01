@@ -28,3 +28,4 @@ data.json
 *.7z
 
 dist
+code-docs/**/*
