@@ -160,7 +160,13 @@ declare module "obsidian" {
 
         onDragLeaf(event: MouseEvent, leaf: WorkspaceLeaf): void;
 
-        onLayoutChange(): void; // tell Obsidian leaves have been added/removed/etc.
+        /**
+         * https://github.com/Fevol/obsidian-typings/blob/e1b292503d1a3dfea55f4d491b01dd599f74f31d/src/obsidian/augmentations/Workspace.d.ts#L1076
+         *
+         * saves the leaves to workspace.json
+         * @returns void
+         */
+        onLayoutChange(): void;
         activeLeafEvents(): void;
     }
 

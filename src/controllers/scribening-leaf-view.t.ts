@@ -1,5 +1,5 @@
+import { ScribeningNoteEditor } from "@src/controllers/scribening-leaf-view";
 import type { View, Workspace, WorkspaceSplit } from "obsidian";
-import { ScribeningNoteEditor } from "./scribening-leaf-view";
 
 // export interface DailyNoteEditorParent {
 //     hoverPopover: DailyNoteEditor | null;
@@ -33,3 +33,4 @@ export type FishoutSvNoteEditorFromFn = (
 export type GetWindowsFromWorkspaceSplitFn = () => ReturnType<
     typeof ScribeningNoteEditor.getWindowsFromWorkspaceSplit
 >;
+export const LEAF_VIEW_CLZZ = ".dn-leaf-view";

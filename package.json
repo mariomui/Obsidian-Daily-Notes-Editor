@@ -52,6 +52,7 @@
         "typedoc": "^0.28.5",
         "typedoc-plugin-mdn-links": "^5.0.2",
         "typescript": "5.3.3",
+        "util-inspect": "^0.1.8",
         "vite": "link:@sveltjs/kit/vite"
     },
     "dependencies": {

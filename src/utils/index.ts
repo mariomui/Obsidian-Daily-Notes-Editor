@@ -9,11 +9,8 @@ export function genId(size: number): string {
 
 export function getBasenameOfFolderPath(vault: Vault, path: string) {
     const abf = vault.getAbstractFileByPath(path);
+    // if (abf) {
     const isTargetTFolder = abf instanceof TFolder;
     const folder_name = isTargetTFolder ? abf.name : "";
     return folder_name;
-}
-
-export function logger(...args: any[]) {
-    console.log.apply(this, args);
 }

@@ -1,5 +1,6 @@
 <script lang="ts">
     // import type DailyNoteViewPlugin from "../dailyNoteViewIndex";
+    import { spawnLeafView } from "@src/controllers/scribening-leaf-view";
     import type ScribeningViewPlugin from "@src/main";
     import {
         MarkdownView,
@@ -7,7 +8,6 @@
         TFile,
         type WorkspaceLeaf,
     } from "obsidian";
-    import { spawnLeafView } from "@src/controllers/scribening-leaf-view";
     import { onDestroy, onMount } from "svelte";
 
     export let file: TAbstractFile;

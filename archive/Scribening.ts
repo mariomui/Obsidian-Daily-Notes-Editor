@@ -2,14 +2,13 @@ import {
     checkIsScribeningNoteLeaf,
     ScribeningNoteEditor,
 } from "@src/controllers/scribening-leaf-view";
-import { ScribeningNoteView } from "@src/controllers/ScribeningNoteView";
+import type { ScribeningNoteView } from "@src/controllers/ScribeningNoteView";
 import {
     SCRIBENING_NOTE_VIEW_TYPE,
     type ScribeningNoteViewState,
 } from "@src/controllers/ScribeningNoteView.t";
 import { ScribeningSettingTab } from "@src/controllers/ScribeningSettings";
 import {
-    // emojiListField,
     every250WordsPlugin,
     fileNameField,
     pluginField,
@@ -19,33 +18,25 @@ import {
     MENU_ITEM_DATA_ATTRIBUTE,
     RECENT_FILES_PLUGIN_NAME,
 } from "@src/main.t";
-import "@src/style/index.css";
-import type { SortField } from "@src/types/time.t";
-import { SORT_BYS } from "@src/types/time.t";
-import { logger } from "@src/utils/createLogger/createLogger";
-import { COLORS } from "@src/utils/createLogger/createLogger.t";
+import { SORT_BYS, type SortField } from "@src/types/time.t";
+import { logger } from "@src/utils/createLogger";
 import { around } from "monkey-around";
 import {
-    type OpenViewState,
     Plugin,
     requireApiVersion,
     TFile,
     TFolder,
     Workspace,
     WorkspaceContainer,
-    type WorkspaceItem,
     WorkspaceLeaf,
+    type OpenViewState,
+    type WorkspaceItem,
 } from "obsidian";
-import {
-    applyColorTo,
-    make_traceable_codeclass_name,
-} from "./utils/createLogger/createLogger.f";
 
-export default class ScribeningPlugin extends Plugin {
+export default class Scribening extends Plugin {
     private view: ScribeningNoteView; // this is always populated with a ScribeningNoteView.
     lastActiveFile: TFile;
     // private lastCheckedDay: string;
-
     settings: {
         hideFrontmatter: boolean;
         hideBacklinks: boolean;
@@ -56,9 +47,7 @@ export default class ScribeningPlugin extends Plugin {
 
     experimentWithCM() {
         this.registerEditorExtension([
-            pluginField.init(function () {
-                return this;
-            }),
+            pluginField.init(() => this),
             every250WordsPlugin,
             fileNameField,
             wordField,
@@ -66,7 +55,6 @@ export default class ScribeningPlugin extends Plugin {
     }
     async onload() {
         // load data into data.json
-
         await this.loadSettings();
         this.addSettingTab(new ScribeningSettingTab(this.app, this));
 
@@ -94,20 +82,14 @@ export default class ScribeningPlugin extends Plugin {
         this.hydrateFolderContextMenu();
 
         if (__MODE__ === "development" && __SCRIBENING_REL_TEST_FOLDER__) {
-            setTimeout(
-                (() => {
-                    logger.trace(
-                        `open notes inside folder ${applyColorTo([
-                            COLORS.BLUE,
-                            this.constructor.name,
-                        ])}`
-                    );
-                    this.openFolderView(
-                        __SCRIBENING_REL_TEST_FOLDER__,
-                        SORT_BYS.NAME
-                    );
-                }).bind(this)
-            );
+            setTimeout(() => {
+                logger.level = "trace";
+                logger.trace("open notes inside folder");
+                this.openFolderView(
+                    __SCRIBENING_REL_TEST_FOLDER__,
+                    SORT_BYS.NAME
+                );
+            });
         }
     }
 
@@ -165,16 +147,18 @@ export default class ScribeningPlugin extends Plugin {
         folderPath: string,
         sortField: SortField = SORT_BYS.NAME
     ) {
-        logger.trace(
-            "function fires" +
-                make_traceable_codeclass_name(this.openFolderView.name)
-        );
         const workspace = this.app.workspace;
+        // create new leaf
+        const leaf = workspace.getLeaf(true);
 
+        await leaf.setViewState({ type: SCRIBENING_NOTE_VIEW_TYPE });
+        const viewState = leaf.getViewState();
+        viewState.state = { ...viewState.state, ...{ target: folderPath } };
+        leaf.setViewState(viewState);
+        logger.trace(leaf.getViewState(), leaf.getDisplayText());
         // this.app.workspace.getActiveViewOfType(
         //     MarkdownView as unknown as new (...args: any[]) => View
         // );
-
         // Toggle the auto reveal off when i open up a folderview
         const fileExplorerView = workspace
             ?.getLeavesOfType("file-explorer")
@@ -188,17 +172,6 @@ export default class ScribeningPlugin extends Plugin {
             // fileExplorerView["onToggleAutoReveal"]();
         }
 
-        // create new leaf
-        const leaf = workspace.getLeaf(true);
-
-        await leaf.setViewState({
-            type: SCRIBENING_NOTE_VIEW_TYPE,
-        });
-
-        logger.trace({
-            pkg: leaf.getViewState(),
-            message: `Leaf.getViewState in ${this.constructor.name}`,
-        });
         // Get the view and set the selection mode to folder
         // prep the view;
         const view = leaf.view as ScribeningNoteView;
@@ -210,9 +183,8 @@ export default class ScribeningPlugin extends Plugin {
                 val: sortField,
             }
         );
-
-        // leaf.view.setState(leaf.view.getState(), { target: "poo" });
         workspace.revealLeaf(leaf);
+        console.log(leaf.view);
     }
     setStateTo<T, K extends keyof T>(
         ctx: T,
@@ -256,7 +228,6 @@ export default class ScribeningPlugin extends Plugin {
             //         if (!viewInstance && func?.VIEW_TYPE === "markdown") {
             //             // the current workspace , the current leaf, aka container that houses a view.
             //             const activeLeaf = this.activeLeaf;
-
             //             // if the container, the view inside is my registered viewtype do nothing.
             //             if (activeLeaf?.view instanceof ScribeningNoteView) {
             //                 // const editMode = activeLeaf.view.editMode;
@@ -265,11 +236,9 @@ export default class ScribeningPlugin extends Plugin {
             //             }
             //             return viewInstance;
             //         }
-
             //         return viewInstance;
             //     },
             // Toggle isLayoutChangeInProgress when Workspace changes layouts
-
             /**
              * Sets the variable allowing us to know if the workspace layout has finished its process of opening the leaves of a saved session.
              *
@@ -280,7 +249,6 @@ export default class ScribeningPlugin extends Plugin {
                 return async function (workspace: unknown) {
                     isWorkspaceLayoutChanging = true;
                     // changeLayout(workspace: any): Promise<void>;
-
                     try {
                         // Don't consider hover popovers part of the workspace while it's changing
                         await o_changeLayout.call(this, workspace);
@@ -323,7 +291,6 @@ export default class ScribeningPlugin extends Plugin {
                         : arg1;
 
                     // iterateAllLeaves and iterateRootLeaves call iterateLeaves with an object in the first parameter. the arg1/parent then has a value.
-
                     // ## dont run postprocesses when:
                     // ### on startup,
                     // #### because parent is null
@@ -334,7 +301,6 @@ export default class ScribeningPlugin extends Plugin {
 
                     // ## arg1 Exists, ar2 Exists -> continue
                     // ## arg1 is not a function, and arg 2 is not a function -> continue
-
                     // 0.14.x doesn't have WorkspaceContainer; this can just be an instanceof check once 15.x is mandatory:
                     const isApiHigherOrEqualToPatch15 =
                         requireApiVersion("0.15.0");
@@ -370,7 +336,6 @@ export default class ScribeningPlugin extends Plugin {
             //         if (leafOrView.parentLeaf) {
             //             // active Time is an uncontrolled custom data pegged to a foreign body.
             //             leafOrView.parentLeaf["activeTime"] = 1700000000000;
-
             //             next.call(this, leafOrView.parentLeaf, t);
             //             // post process if there is a parent leaf.
             //             if (leafOrView.view["editMode"]) {
@@ -414,6 +379,7 @@ export default class ScribeningPlugin extends Plugin {
                         if (
                             isWorkspaceItemGetRootMatchCurrentLeafRoot === true
                         ) {
+                            logger.info({ workspaceItem }, "matched");
                             return workspaceItem;
                         }
                         if (
@@ -426,16 +392,16 @@ export default class ScribeningPlugin extends Plugin {
                         return workspaceItem;
                     };
                 },
-                // setPinned(old): WorkspaceLeaf["setPinned"] {
-                //     // https://docs.obsidian.md/Reference/TypeScript+API/WorkspaceLeaf/setPinned
-                //     // report to the plugin when the Leaf pins itself
-                //     return function (pinned) {
-                //         old.call(this, pinned);
-                //         if (checkIsScribeningNoteLeaf(this) && !pinned) {
-                //             this.setPinned(true);
-                //         }
-                //     };
-                // },
+                setPinned(old): WorkspaceLeaf["setPinned"] {
+                    // https://docs.obsidian.md/Reference/TypeScript+API/WorkspaceLeaf/setPinned
+                    // report to the plugin when the Leaf pins itself
+                    return function (pinned) {
+                        old.call(this, pinned);
+                        if (checkIsScribeningNoteLeaf(this) && !pinned) {
+                            this.setPinned(true);
+                        }
+                    };
+                },
                 openFile(old) {
                     return function (file: TFile, openState?: OpenViewState) {
                         const isRecentFilesPluginEnabled =

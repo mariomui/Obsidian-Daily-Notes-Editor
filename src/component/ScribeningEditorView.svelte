@@ -1,26 +1,22 @@
 <script lang="ts">
     // import type DailyNoteViewPlugin from "@src/dailyNoteViewIndex";
-    import type ScribeningViewPlugin from "@src/main.ts";
+    import type ScribeningPlugin from "@src/main";
     import type { WorkspaceLeaf } from "obsidian";
 
-    import { type TFile, moment } from "obsidian";
     import ScribeningNote from "@src/component/ScribeningNote.svelte";
+    import { type TFile } from "obsidian";
     import { inview } from "svelte-inview";
 
-    import {
-        type TimeRange,
-        type SortField,
-        SORT_BYS,
-    } from "@src/types/time.t";
+    import { SORT_BYS, type SortField } from "@src/types/time.t";
 
-    import { onMount } from "svelte";
-    import { FileManager, type FileManagerOptions } from "@utils/fileManager";
     import {
         SELECTION_MODES,
         type SelectionModeValue,
     } from "@src/controllers/ScribeningNoteView.t";
+    import { FileManager, type FileManagerOptions } from "@utils/fileManager";
+    import { onMount } from "svelte";
 
-    export let plugin: ScribeningViewPlugin;
+    export let plugin: ScribeningPlugin;
     export let leaf: WorkspaceLeaf;
     export let selectionMode: SelectionModeValue = SELECTION_MODES.FOLDER;
     export let target: string = "";

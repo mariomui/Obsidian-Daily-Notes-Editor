@@ -144,20 +144,23 @@ export class DailyNoteEditor extends nosuper(HP) {
             .filter((he) => he);
     }
 
-    static forLeaf(leaf: WorkspaceLeaf | undefined) {
-        // leaf can be null such as when right clicking on an internal link
-        const el =
-            leaf &&
-            document.body.matchParent.call(leaf.containerEl, ".dn-leaf-view"); // work around matchParent race condition
-        return el ? popovers.get(el) : undefined;
-    }
+    // static forLeaf(leaf: WorkspaceLeaf | undefined) {
+    //     // leaf can be null such as when right clicking on an internal link
+    //     const el =
+    //         leaf &&
+    //         document.body.matchParent.call(
+    //             leaf["containerEl"],
+    //             ".dn-leaf-view"
+    //         ); // work around matchParent race condition
+    //     return el ? popovers.get(el) : undefined;
+    // }
 
     static iteratePopoverLeaves(
         ws: Workspace,
         cb: (leaf: WorkspaceLeaf) => boolean | void
     ) {
         for (const popover of this.activePopovers()) {
-            if (popover.rootSplit && ws.iterateLeaves(cb, popover.rootSplit))
+            if (popover.rootSplit && ws["iterateLeaves"](cb, popover.rootSplit))
                 return true;
         }
         return false;
@@ -196,10 +199,12 @@ export class DailyNoteEditor extends nosuper(HP) {
 
         this.abortController!.load();
         this.timer = window.setTimeout(this.show.bind(this), waitTime);
+
         this.setActive = this._setActive.bind(this);
         if (hoverEl) {
             hoverEl.addEventListener("mousedown", this.setActive);
         }
+
         // custom logic begin
         popovers.set(this.hoverEl, this);
         this.hoverEl.addClass("dn-editor");

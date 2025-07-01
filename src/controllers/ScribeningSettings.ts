@@ -1,5 +1,5 @@
 import type ScribeningPlugin from "@src/main";
-import { type App, debounce, PluginSettingTab, Setting, Modal } from "obsidian";
+import { type App, debounce, Modal, PluginSettingTab, Setting } from "obsidian";
 import type { SelectionModeValue } from "./ScribeningNoteView.t";
 
 export type Preset = { type: SelectionModeValue; target: string };

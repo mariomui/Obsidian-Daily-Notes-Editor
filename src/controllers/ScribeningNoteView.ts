@@ -1,23 +1,27 @@
 // This view is registersed in the plugin. When we register a factory function, that function utilizes this viewcontroller to craft the instance
 import ScribeningEditorView from "@src/component/ScribeningEditorView.svelte";
-import ScribeningPlugin from "@src/main";
-import type { TimeRange, SortField } from "@src/types/time.t";
-import { getBasenameOfFolderPath } from "@src/utils";
-import {
-    type WorkspaceLeaf,
-    ItemView,
-    Scope,
-    type TAbstractFile,
-    TFile,
-    Menu,
-} from "obsidian";
 import {
     SCRIBENING_NOTE_VIEW_TYPE,
     SELECTION_MODES,
     type ScribeningNoteViewState,
     type SelectionModeValue,
     type SortBysValue,
-} from "./ScribeningNoteView.t";
+} from "@src/controllers/ScribeningNoteView.t";
+import ScribeningPlugin from "@src/main";
+import type { SortField, TimeRange } from "@src/types/time.t";
+import { getBasenameOfFolderPath } from "@src/utils";
+import { logger } from "@src/utils/createLogger/createLogger";
+import { make_traceable_codeclass_name } from "@src/utils/createLogger/createLogger.f";
+
+import { DebugHelper } from "@src/utils/DebugHelper";
+import {
+    ItemView,
+    Menu,
+    Scope,
+    type TAbstractFile,
+    TFile,
+    type WorkspaceLeaf,
+} from "obsidian";
 
 export function isEmebeddedLeaf(leaf: WorkspaceLeaf) {
     // Work around missing enhance.js API by checking match condition instead of looking up parent
@@ -25,45 +29,68 @@ export function isEmebeddedLeaf(leaf: WorkspaceLeaf) {
 }
 
 export class ScribeningNoteView extends ItemView {
+    /**
+     * The factory function supplying an instance of
+     * ScribeningNoteView when a view is asked to be setViewState->revealLeaf.
+     */
     svEditorView: ScribeningEditorView; // this is the svelte file
     plugin: ScribeningPlugin;
     scope: Scope; // For keyboard shortcuts
 
     selectedDaysRange: TimeRange = "all";
-    selectionMode: SelectionModeValue = "daily";
+    selectionMode: SelectionModeValue = "folder";
     target: string = "";
     sortField: SortBysValue = "name";
+    debugHelper = new DebugHelper();
+    codeclass_name = this.constructor.name;
 
     constructor(leaf: WorkspaceLeaf, plugin: ScribeningPlugin) {
         super(leaf);
         this.plugin = plugin;
 
         this.scope = new Scope(plugin.app.scope);
+        logger.trace(
+            "leaf opens" + make_traceable_codeclass_name(this.codeclass_name)
+        );
     }
 
     getMode = () => {
         return "source";
     };
 
+    /**
+     * INHERITED member function to retrieve the registered id
+     * @return {SCRIBENING_NOTE_VIEW_TYPE} Registered Id storing the view manufacturer.
+     */
     getViewType(): string {
         return SCRIBENING_NOTE_VIEW_TYPE;
     }
 
+    /**
+     * *INHERITED* member function that populates the tab title of the leaf.
+     * "workspace-tab-header-inner-title"
+     * In stacked tabs it it would be the vertical ui element that houses the filename
+     * @returns {string} Tab Title
+     */
     getDisplayText(): string {
         // https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines#Prefer+the+Vault+API+over+the+Adapter+API The tempation to use basename path parse is great. Don't do it.
         const folder_name = getBasenameOfFolderPath(
             this.app.vault,
             this.target
         );
+
+        if (Boolean(folder_name) === false) {
+            return this.target || "none";
+        }
+        // this.debugHelper.debug({ target: this.target });
+        this.target = folder_name as string;
         // the first daily notes is used. There's not refresh of this.
-        const choices: Record<SelectionModeValue, string> = {
-            [SELECTION_MODES.DAILY]: "Daily Notes",
+        const choices: Partial<Record<SelectionModeValue, string>> = {
             [SELECTION_MODES.FOLDER]: `Folder: ${folder_name}`,
-            [SELECTION_MODES.TAG]: `Tag: ${this.target}`,
         };
 
-        const selection_mode = this.selectionMode;
-        return choices[selection_mode] || "Notes";
+        const selection_mode = this.selectionMode || "folder";
+        return choices[selection_mode] || "Error";
     }
 
     getIcon(): string {
@@ -77,6 +104,9 @@ export class ScribeningNoteView extends ItemView {
         return choices[selection_mode] || "document";
     }
 
+    /**
+     * @param {TAbstractFile} file
+     */
     handleFileCreate = (file: TAbstractFile) => {
         console.log(
             "on open, this will be called whenever i create a new file"
@@ -89,9 +119,20 @@ export class ScribeningNoteView extends ItemView {
         if (file instanceof TFile) this.svEditorView.fileDelete(file);
     };
 
+    /**
+     * @param {SelectionModeValue} mode to be deprecated (nxt-impl: "folder")
+     * @param {string} target dirname
+     */
     setSelectionMode(mode: SelectionModeValue, target: string = "") {
+        logger.trace(
+            "activated" +
+                make_traceable_codeclass_name(
+                    this.codeclass_name + " " + this.setSelectionMode.name
+                )
+        );
         this.selectionMode = mode;
         this.target = target;
+        logger.trace({ target: this.target }, this.setSelectionMode.name);
         const svEditorView = this.svEditorView;
         // ScribeningEditorView
         if (svEditorView) {

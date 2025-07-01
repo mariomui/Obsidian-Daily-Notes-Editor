@@ -1,11 +1,21 @@
+import ScribeningNote from "@src/component/ScribeningNote.svelte";
+import {
+    type ConstructableWorkspaceSplit,
+    type FishoutSvNoteEditorFromFn,
+    type GetWindowsFromWorkspaceSplitFn,
+    LEAF_VIEW_CLZZ,
+    popoverEltoSvNoteEditorMap,
+    type ScribeningNoteEditorParent,
+    SV_NOTE_LEAF_COMPLEX_CSS_SELECTOR,
+} from "@src/controllers/scribening-leaf-view.t";
+import type ScribeningPlugin from "@src/main";
 // Original code from https://github.com/nothingislost/obsidian-hover-editor/blob/9ec3449be9ab3433dc46c4c3acfde1da72ff0261/src/popover.ts
 // You can use this file as a basic leaf view create method in anywhere
 // Please rememeber if you want to use this file, you should patch the obsidian.d.ts file
 // And also monkey around the Obsidian original method.
 
-import type Scribening from "@src/main";
-
-import { genId, logger } from "@src/utils";
+import { genId } from "@src/utils";
+import { createLoggerV2 } from "@src/utils/createLogger/createLogger";
 import {
     Component,
     type EphemeralState,
@@ -22,15 +32,12 @@ import {
     WorkspaceSplit,
     WorkspaceTabs,
 } from "obsidian";
-import {
-    type ConstructableWorkspaceSplit,
-    type FishoutSvNoteEditorFromFn,
-    type GetWindowsFromWorkspaceSplitFn,
-    popoverEltoSvNoteEditorMap,
-    type ScribeningNoteEditorParent,
-    SV_NOTE_LEAF_COMPLEX_CSS_SELECTOR,
-} from "./scribening-leaf-view.t";
 
+const logger = createLoggerV2({
+    bindings: {
+        level: "silent",
+    },
+});
 export function checkIsScribeningNoteLeaf(
     leaf: WorkspaceLeaf,
     identifier = SV_NOTE_LEAF_COMPLEX_CSS_SELECTOR
@@ -39,19 +46,30 @@ export function checkIsScribeningNoteLeaf(
     return leaf.containerEl.matches(identifier);
 }
 
+/**
+ * no super is a way to borrow the Component functions but not
+ */
 function nosuper<T>(base: new (...args: unknown[]) => T): new () => T {
     const derived = function () {
+        // create a new object
         return Object.setPrototypeOf(new Component(), new.target.prototype);
     };
     derived.prototype = base.prototype;
     return Object.setPrototypeOf(derived, base) as any;
 }
 
+/**
+ * @param {ScribeningPlugin} plugin
+ * @param {HTMLElement} [initiatingEl]
+ * @param {WorkspaceLeaf} [leaf]
+ * @param {() => unknown} [handleShow]
+ * @returns {[WorkspaceLeaf, ScribeningNoteEditor]}
+ */
 export const spawnLeafView = (
-    plugin: Scribening,
+    plugin: ScribeningPlugin,
     initiatingEl?: HTMLElement,
     leaf?: WorkspaceLeaf,
-    onShowCallback?: () => unknown
+    handleShow?: () => unknown
 ): [WorkspaceLeaf, ScribeningNoteEditor] => {
     // When Obsidian doesn't set any leaf active, use leaf instead.
     let parent = plugin.app.workspace
@@ -65,13 +83,21 @@ export const spawnLeafView = (
         initiatingEl!,
         plugin,
         undefined,
-        onShowCallback
+        handleShow
+    );
+    logger.trace(
+        "instancing ScribeningNoteEditor and supplying Scribening Note Editor viewcontroller to " +
+            ScribeningNote.name,
+        spawnLeafView.name
     );
     return [hoverPopover.attachLeaf(), hoverPopover];
 };
 
-// @ts-ignore
-export class ScribeningNoteEditor extends nosuper(HP) {
+const IS_NEW_CLAZZ = "is-new";
+export class ScribeningNoteEditor extends nosuper(
+    // @ts-ignore
+    HP
+) {
     onTarget: boolean;
     setActive: (event: MouseEvent) => void;
 
@@ -114,7 +140,7 @@ export class ScribeningNoteEditor extends nosuper(HP) {
         //https://github.com/Fevol/obsidian-typings/blob/e1b292503d1a3dfea55f4d491b01dd599f74f31d/src/obsidian/augmentations/Workspace.d.ts#L93
         // @ts-ignore
         const { floatingSplit } = app.workspace;
-        logger({ floatingSplit });
+        logger.info({ floatingSplit });
         if (floatingSplit) {
             for (const split of floatingSplit.children) {
                 if (split.win) windows.push(split.win);
@@ -123,7 +149,7 @@ export class ScribeningNoteEditor extends nosuper(HP) {
         return windows;
     }
 
-    static containerForDocument(plugin: Scribening, doc: Document) {
+    static containerForDocument(plugin: ScribeningPlugin, doc: Document) {
         if (doc !== document && plugin.app.workspace.floatingSplit)
             for (const container of plugin.app.workspace.floatingSplit
                 .children) {
@@ -148,7 +174,7 @@ export class ScribeningNoteEditor extends nosuper(HP) {
      */
     static fishoutSvNoteEditorFrom(win?: Window): ScribeningNoteEditor[] {
         const $leafs = Array.prototype.slice.call(
-            win?.document?.body.querySelectorAll(".dn-leaf-view") ?? []
+            win?.document?.body.querySelectorAll(LEAF_VIEW_CLZZ) ?? []
         ) as HTMLElement[];
         return $leafs
             .map(($el) => popoverEltoSvNoteEditorMap.get($el)!)
@@ -182,11 +208,10 @@ export class ScribeningNoteEditor extends nosuper(HP) {
     constructor(
         parent: ScribeningNoteEditorParent,
         public targetEl: HTMLElement,
-        public plugin: Scribening,
+        public plugin: ScribeningPlugin,
         waitTime?: number,
-        public onShowCallback?: () => unknown
+        public handleShow?: () => unknown
     ) {
-        //
         super();
 
         if (waitTime === undefined) {
@@ -209,7 +234,9 @@ export class ScribeningNoteEditor extends nosuper(HP) {
         const { hoverEl } = this;
 
         this.abortController!.load();
+
         this.timer = window.setTimeout(this.show.bind(this), waitTime);
+
         this.setActive = this._setActive.bind(this);
         if (hoverEl) {
             hoverEl.addEventListener("mousedown", this.setActive);
@@ -348,7 +375,11 @@ export class ScribeningNoteEditor extends nosuper(HP) {
         );
     }
 
+    /**
+     * non-obsidian api, called by show
+     */
     onShow() {
+        logger.trace(this.onShow.name, "fires");
         // Once we've been open for closeDelay, use the closeDelay as a hiding timeout
         const closeDelay = 600;
         setTimeout(() => (this.waitTime = closeDelay), closeDelay);
@@ -356,12 +387,12 @@ export class ScribeningNoteEditor extends nosuper(HP) {
         this.oldPopover?.hide();
         this.oldPopover = null;
 
-        this.hoverEl.toggleClass("is-new", true);
+        this.hoverEl.toggleClass(IS_NEW_CLAZZ, true);
 
         this.document.body.addEventListener(
             "click",
             () => {
-                this.hoverEl.toggleClass("is-new", false);
+                this.hoverEl.toggleClass(IS_NEW_CLAZZ, false);
             },
             { once: true, capture: true }
         );
@@ -381,8 +412,8 @@ export class ScribeningNoteEditor extends nosuper(HP) {
         const inlineTitle = this.hoverEl.querySelector(".inline-title");
         if (inlineTitle) inlineTitle.remove();
 
-        this.onShowCallback?.();
-        this.onShowCallback = undefined; // only call it once
+        this.handleShow?.();
+        this.handleShow = undefined; // only call it once
     }
 
     detect(el: HTMLElement) {
@@ -430,17 +461,22 @@ export class ScribeningNoteEditor extends nosuper(HP) {
         );
     }
 
+    /**
+     * show is a property of the html element
+     * @returns void
+     */
     show() {
         // native obsidian logic start
         if (!this.targetEl || this.document.body.contains(this.targetEl)) {
             this.state = PopoverState.Shown;
             this.timer = 0;
             this.targetEl.appendChild(this.hoverEl);
+
             this.onShow();
+            logger.trace("onShow invoked here by", this.show.name);
+
             this.plugin.app.workspace.onLayoutChange();
-            // initializingHoverPopovers.remove(this);
-            // activeHoverPopovers.push(this);
-            // initializePopoverChecker();
+
             this.load();
         } else {
             this.hide();
@@ -605,15 +641,15 @@ export class ScribeningNoteEditor extends nosuper(HP) {
     whenShown(callback: () => any) {
         // invoke callback once the popover is visible
         if (this.detaching) return;
-        const existingCallback = this.onShowCallback;
-        this.onShowCallback = () => {
+        const existingCallback = this.handleShow;
+        this.handleShow = () => {
             if (this.detaching) return;
             callback();
             if (typeof existingCallback === "function") existingCallback();
         };
         if (this.state === PopoverState.Shown) {
-            this.onShowCallback();
-            this.onShowCallback = undefined;
+            this.handleShow();
+            this.handleShow = undefined;
         }
     }
 
@@ -635,6 +671,7 @@ export class ScribeningNoteEditor extends nosuper(HP) {
             if (this.detaching) this.hide();
         }
         this.plugin.app.workspace.setActiveLeaf(leaf);
+        logger.info("set as active Leaf");
 
         return leaf;
     }

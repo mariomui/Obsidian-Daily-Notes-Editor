@@ -10,14 +10,16 @@ import {
     Decoration,
     type DecorationSet,
     EditorView,
+    type PluginValue,
     ViewPlugin,
     // type Panel,
     // showPanel,
     type ViewUpdate,
     WidgetType,
 } from "@codemirror/view";
-import type Scribening from "@src/main";
-import { logger } from "@src/utils";
+import type ScribeningPlugin from "@src/main";
+import { logger } from "@src/utils/createLogger/createLogger";
+
 // import { ViewPlugin, ViewUpdate } from "@codemirror/view";
 
 export const emojiListField = StateField.define<DecorationSet>({
@@ -53,14 +55,14 @@ export const emojiListField = StateField.define<DecorationSet>({
 
 // init(create: fn(state: EditorState) → Value) → Extension
 // Returns an extension that enables this field and overrides the way it is initialized. Can be useful when you need to provide a non-default starting value for the field.
-export const pluginField = StateField.define<Scribening>({
+export const pluginField = StateField.define<ScribeningPlugin>({
     create(state): any {
         // state is always the Plugin
         // create state never gets called.
         // create(state: EditorState) → Value
         // Creates the initial value for the field when a state is created.
         // only triggers on effects
-        logger({ ctx: this });
+        logger.info({ ctx: this });
         return state;
     },
     update(state, tr) {
@@ -81,67 +83,80 @@ export class LineWidget extends WidgetType {
     // side: 1, // place after the word
 }
 
+export class HandlePageBreakDecoration implements PluginValue {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+        this.decorations = this.buildDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+        if (update.docChanged || update.viewportChanged) {
+            this.decorations = this.buildDecorations(update.view);
+        }
+    }
+
+    buildDecorations(view: EditorView): DecorationSet {
+        const builder = new RangeSetBuilder<Decoration>();
+
+        const text = view.state.doc.toString();
+        const wordRegex = /\b\w+\b/g;
+        let match;
+        let count = 0;
+        // const decos: any[] = [];
+
+        while ((match = wordRegex.exec(text)) !== null) {
+            count++;
+            if (count % 250 === 0) {
+                const pos = match.index + match[0].length;
+                builder.add(
+                    pos, //from
+                    pos, // to
+                    Decoration.replace({
+                        widget: new LineWidget(),
+                        // side: -1,
+                        inclusive: true,
+                        inclusiveStart: true,
+                        inclusiveEnd: true,
+                    })
+                );
+                // decos.push(
+                //     Decoration.widget({
+                //         widget: new Xwidget(),
+                //         side: 1,
+                //     }).range(pos)
+                // );
+            }
+        }
+        return builder.finish();
+        // return Decoration.set(decos, true);
+    }
+}
 export const every250WordsPlugin = ViewPlugin.fromClass(
-    class {
-        decorations: DecorationSet;
-
-        constructor(view: EditorView) {
-            this.decorations = this.buildDecorations(view);
-        }
-
-        update(update: ViewUpdate) {
-            if (update.docChanged || update.viewportChanged) {
-                this.decorations = this.buildDecorations(update.view);
-            }
-        }
-
-        buildDecorations(view: EditorView): DecorationSet {
-            const builder = new RangeSetBuilder<Decoration>();
-
-            const text = view.state.doc.toString();
-            const wordRegex = /\b\w+\b/g;
-            let match;
-            let count = 0;
-            // const decos: any[] = [];
-
-            while ((match = wordRegex.exec(text)) !== null) {
-                count++;
-                if (count % 250 === 0) {
-                    const pos = match.index + match[0].length;
-                    builder.add(
-                        pos, //from
-                        pos, // to
-                        Decoration.replace({
-                            widget: new LineWidget(),
-                            // side: -1,
-                            inclusive: true,
-                            inclusiveStart: true,
-                            inclusiveEnd: true,
-                        })
-                    );
-                    // decos.push(
-                    //     Decoration.widget({
-                    //         widget: new Xwidget(),
-                    //         side: 1,
-                    //     }).range(pos)
-                    // );
-                }
-            }
-            return builder.finish();
-            // return Decoration.set(decos, true);
-        }
-    },
+    HandlePageBreakDecoration,
     {
+        //decorations⁠?: fn(value: V) → DecorationSet
+        // ? Doesn't this plugin automatically allow for decorations anyways
         decorations: (viewPlugin) => {
             return viewPlugin.decorations;
         },
     }
 );
 
+export const fileNameField = StateField.define<string>({
+    create(state) {
+        return "hey";
+    },
+    update(value, tr) {
+        return value;
+    },
+});
+
 const wordRegex = /\b\w+\b/g;
 
 export const wordField = StateField.define<string[]>({
     create(state) {
+        // logger.info(state.field(fileNameField));
         return getWords(state.doc.toString());
     },
     update(words, tr) {
