@@ -175,9 +175,7 @@ type PinoBindings = {
 };
 export function createLoggerV2(fig: { bindings: PinoBindings }) {
     const bindings = fig.bindings;
-    const wrapLogMethod = createWrapLogMethod(
-        baseLogger.child({}, { level: "silent" })
-    );
+    const wrapLogMethod = createWrapLogMethod(baseLogger.child({}, bindings));
     return {
         trace: wrapLogMethod(LEVEL_FLAGS.TRACE),
         info: wrapLogMethod(LEVEL_FLAGS.INFO),
