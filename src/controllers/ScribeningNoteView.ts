@@ -10,7 +10,8 @@ import {
 import ScribeningPlugin from "@src/main";
 import type { SortField, TimeRange } from "@src/types/time.t";
 import { getBasenameOfFolderPath } from "@src/utils";
-import { logger } from "@src/utils/createLogger/createLogger";
+import { createLoggerV2 } from "@src/utils/createLogger/createLogger";
+
 import { make_traceable_codeclass_name } from "@src/utils/createLogger/createLogger.f";
 
 import { DebugHelper } from "@src/utils/DebugHelper";
@@ -22,6 +23,8 @@ import {
     TFile,
     type WorkspaceLeaf,
 } from "obsidian";
+
+const logger = createLoggerV2();
 
 export function isEmebeddedLeaf(leaf: WorkspaceLeaf) {
     // Work around missing enhance.js API by checking match condition instead of looking up parent
