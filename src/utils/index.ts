@@ -14,3 +14,7 @@ export function getBasenameOfFolderPath(vault: Vault, path: string) {
     const folder_name = isTargetTFolder ? abf.name : "";
     return folder_name;
 }
+
+export function checkIsObject(value): boolean {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+}

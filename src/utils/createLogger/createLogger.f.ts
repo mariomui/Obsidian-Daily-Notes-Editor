@@ -2,10 +2,10 @@ import { checkIsObject } from "@src/utils";
 import {
     type Check_types,
     check_types,
-    COLORS,
     type COLORS_KEYS,
 } from "@src/utils/createLogger/createLogger.t";
 import inspect from "util-inspect";
+import { COLORS } from "./COLORS.c";
 
 export function getTypeOf(val): Check_types {
     const checkChoices = {
