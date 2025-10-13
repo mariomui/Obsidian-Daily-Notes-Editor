@@ -8,6 +8,7 @@ import {
     type ScribeningNoteEditorParent,
     SV_NOTE_LEAF_COMPLEX_CSS_SELECTOR,
 } from "@src/controllers/scribening-leaf-view.t";
+import { NONCE3, NONCE4, NONCE5 } from "@src/lib/NONCES";
 import type ScribeningPlugin from "@src/main";
 // Original code from https://github.com/nothingislost/obsidian-hover-editor/blob/9ec3449be9ab3433dc46c4c3acfde1da72ff0261/src/popover.ts
 // You can use this file as a basic leaf view create method in anywhere
@@ -16,6 +17,7 @@ import type ScribeningPlugin from "@src/main";
 
 import { genId } from "@src/utils";
 import { createLoggerV2 } from "@src/utils/createLogger/createLogger";
+import { LEVEL_FLAGS } from "@src/utils/createLogger/createLogger.t";
 import {
     Component,
     type EphemeralState,
@@ -34,9 +36,10 @@ import {
 } from "obsidian";
 
 const logger = createLoggerV2({
-    bindings: {
-        level: "silent",
+    childOptions: {
+        level: LEVEL_FLAGS.TRACE,
     },
+    bindings: {},
 });
 export function checkIsScribeningNoteLeaf(
     leaf: WorkspaceLeaf,
@@ -46,16 +49,39 @@ export function checkIsScribeningNoteLeaf(
     return leaf.containerEl.matches(identifier);
 }
 
+/**
+ * The type expects a class constructor with unknown number of parameters
+ */
 type NoSuperBase<T> = new (...args: unknown[]) => T;
+/**
+ * The type expects a class (or constructor function) that takes no arguments
+ */
 type NoSuperReturn<T> = new () => T;
 /**
- * no super is a way to borrow the Component functions but not
+ * // https://docs.obsidian.md/Reference/TypeScript+API/HoverPopover
+ * T is unsupplied and inferred.
+ * @param {NoSuperBase<T>} // A class constructor, say HoverParent from core obsidian.
+ * @return {NoSuperReturn<T>} The return is a class/constructor-function, say the newly decorated object from nosuper.
  */
 function nosuper<T>(base: NoSuperBase<T>): NoSuperReturn<T> {
     const derived = function () {
         // create a new object
-        return Object.setPrototypeOf(new Component(), new.target.prototype);
+        // logger.infoAllOnce(new.target.prototype, new.target.name, NONCE5);
+        logger.infoAllOnce(new.target.prototype, { token: NONCE5 });
+        return Object.setPrototypeOf(
+            new Component(),
+            // whatever is produced, what we really get is a instance of component, with the link delegations to the sublcass taht calls it.
+            // new.target is a reference to the constructor function that has been called by new. [ScribeningNoteEditor]
+            // the prototype methods and other delegated powers are inserted into a componentBaby. It does not have ScribeningeNoteEditor Powers just the ScribeningNoteEditor's superclass'. This seems unn.
+            /**
+             * Component {
+             *  __proto__: ScribeningNoteEditor.prototype
+             * }
+             */
+            new.target.prototype
+        );
     };
+
     derived.prototype = base.prototype;
     return Object.setPrototypeOf(derived, base) as any;
 }
@@ -142,7 +168,7 @@ export class ScribeningNoteEditor extends nosuper(
         //https://github.com/Fevol/obsidian-typings/blob/e1b292503d1a3dfea55f4d491b01dd599f74f31d/src/obsidian/augmentations/Workspace.d.ts#L93
         // @ts-ignore
         const { floatingSplit } = app.workspace;
-        logger.info({ floatingSplit });
+        // logger.info({ floatingSplit });
         if (floatingSplit) {
             for (const split of floatingSplit.children) {
                 if (split.win) windows.push(split.win);
@@ -195,10 +221,11 @@ export class ScribeningNoteEditor extends nosuper(
     //     ws: Workspace,
     //     cb: (leaf: WorkspaceLeaf) => boolean | void
     // ) {
-    //     for (const popover of this.activePopovers(
+    //     for (const popover of this.getActivePopovers(
     //         this.getWindowsFromWorkspaceSplit,
     //         this.fishoutSvNoteEditorFrom
     //     )) {
+    //         console.log({ popover });
     //         if (popover.rootSplit && ws.iterateLeaves(cb, popover.rootSplit))
     //             return true;
     //     }
@@ -381,7 +408,7 @@ export class ScribeningNoteEditor extends nosuper(
      * non-obsidian api, called by show
      */
     onShow() {
-        logger.trace(this.onShow.name, "fires");
+        logger.traceOnce(this.onShow.name, "fires", { token: NONCE3 });
         // Once we've been open for closeDelay, use the closeDelay as a hiding timeout
         const closeDelay = 600;
         setTimeout(() => (this.waitTime = closeDelay), closeDelay);
@@ -475,7 +502,9 @@ export class ScribeningNoteEditor extends nosuper(
             this.targetEl.appendChild(this.hoverEl);
 
             this.onShow();
-            logger.trace("onShow invoked here by", this.show.name);
+            logger.traceOnce("onShow invoked here by", this.show.name, {
+                token: NONCE4,
+            });
 
             this.plugin.app.workspace.onLayoutChange();
 
@@ -483,6 +512,7 @@ export class ScribeningNoteEditor extends nosuper(
         } else {
             this.hide();
         }
+
         // native obsidian logic end
 
         // if this is an image view, set the dimensions to the natural dimensions of the image
@@ -673,7 +703,7 @@ export class ScribeningNoteEditor extends nosuper(
             if (this.detaching) this.hide();
         }
         this.plugin.app.workspace.setActiveLeaf(leaf);
-        logger.info("set as active Leaf");
+        // logger.info("set as active Leaf");
 
         return leaf;
     }
