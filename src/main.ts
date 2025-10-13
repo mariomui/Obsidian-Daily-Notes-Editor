@@ -22,8 +22,6 @@ import {
 import "@src/style/index.css";
 import type { SortField } from "@src/types/time.t";
 import { SORT_BYS } from "@src/types/time.t";
-import { logger } from "@src/utils/createLogger/createLogger";
-import { COLORS } from "@src/utils/createLogger/createLogger.t";
 import { around } from "monkey-around";
 import {
     type OpenViewState,
@@ -36,11 +34,14 @@ import {
     type WorkspaceItem,
     WorkspaceLeaf,
 } from "obsidian";
+import { COLORS } from "./utils/createLogger/COLORS.c";
+import { createLoggerV2 } from "./utils/createLogger/createLogger";
 import {
     applyColorTo,
     make_traceable_codeclass_name,
 } from "./utils/createLogger/createLogger.f";
 
+const logger = createLoggerV2();
 export default class ScribeningPlugin extends Plugin {
     private view: ScribeningNoteView; // this is always populated with a ScribeningNoteView.
     lastActiveFile: TFile;
@@ -60,8 +61,8 @@ export default class ScribeningPlugin extends Plugin {
                 return this;
             }),
             every250WordsPlugin,
-            fileNameField,
             wordField,
+            fileNameField,
         ]);
     }
     async onload() {
@@ -248,26 +249,26 @@ export default class ScribeningPlugin extends Plugin {
         const uninstaller = around(Workspace.prototype, {
             // TODO What does this do?
             // somemethod: function somemethod(oldmethod)  { ... }
-            // getActiveViewOfType: (oldmethod) =>
-            //     function (func: any) {
-            //         //
-            //         const viewInstance = oldmethod.call(this, func);
-            //         // postprocess when the viewInstance is non existent
-            //         if (!viewInstance && func?.VIEW_TYPE === "markdown") {
-            //             // the current workspace , the current leaf, aka container that houses a view.
-            //             const activeLeaf = this.activeLeaf;
+            getActiveViewOfType: (oldmethod) =>
+                function (func: any) {
+                    //
+                    const viewInstance = oldmethod.call(this, func);
+                    // postprocess when the viewInstance is non existent
+                    if (!viewInstance && func?.VIEW_TYPE === "markdown") {
+                        // the current workspace , the current leaf, aka container that houses a view.
+                        const activeLeaf = this.activeLeaf;
 
-            //             // if the container, the view inside is my registered viewtype do nothing.
-            //             if (activeLeaf?.view instanceof ScribeningNoteView) {
-            //                 // const editMode = activeLeaf.view.editMode;
-            //                 // editMode is a self appointed property pegged to the activeLeaf.
-            //                 return activeLeaf.view["editMode"];
-            //             }
-            //             return viewInstance;
-            //         }
+                        // if the container, the view inside is my registered viewtype do nothing.
+                        if (activeLeaf?.view instanceof ScribeningNoteView) {
+                            // const editMode = activeLeaf.view.editMode;
+                            // editMode is a self appointed property pegged to the activeLeaf.
+                            return activeLeaf.view["editMode"];
+                        }
+                        return viewInstance;
+                    }
 
-            //         return viewInstance;
-            //     },
+                    return viewInstance;
+                },
             // Toggle isLayoutChangeInProgress when Workspace changes layouts
 
             /**
