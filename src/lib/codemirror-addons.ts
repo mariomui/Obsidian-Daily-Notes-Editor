@@ -2,6 +2,7 @@ import { syntaxTree } from "@codemirror/language";
 import {
     type Extension,
     RangeSetBuilder,
+    StateEffect,
     StateField,
     // Text,
     type Transaction,
@@ -17,10 +18,13 @@ import {
     type ViewUpdate,
     WidgetType,
 } from "@codemirror/view";
+import { NONCE2 } from "@src/lib/NONCES";
 import type ScribeningPlugin from "@src/main";
-import { logger } from "@src/utils/createLogger/createLogger";
+import { createLoggerV2 } from "@src/utils/createLogger/createLogger";
+import { PAGE_BREAK_CLAZZ, PLUGIN_NAME_CLAZZ } from "./codemirror-addons.t";
 
 // import { ViewPlugin, ViewUpdate } from "@codemirror/view";
+const _logger = createLoggerV2();
 
 export const emojiListField = StateField.define<DecorationSet>({
     create(state): DecorationSet {
@@ -62,7 +66,8 @@ export const pluginField = StateField.define<ScribeningPlugin>({
         // create(state: EditorState) → Value
         // Creates the initial value for the field when a state is created.
         // only triggers on effects
-        logger.info({ ctx: this });
+        // logger.info({ ctx: this });
+
         return state;
     },
     update(state, tr) {
@@ -77,7 +82,7 @@ export const pluginField = StateField.define<ScribeningPlugin>({
 export class LineWidget extends WidgetType {
     toDOM(view: EditorView): HTMLElement {
         const hr = document.createElement("hr");
-        hr.addClasses(["scribening", "pagebreak"]);
+        hr.addClasses([PLUGIN_NAME_CLAZZ, PAGE_BREAK_CLAZZ]);
         return hr;
     }
     // side: 1, // place after the word
@@ -132,6 +137,19 @@ export class HandlePageBreakDecoration implements PluginValue {
         // return Decoration.set(decos, true);
     }
 }
+// what is the functional way of setting a viewplugin class?
+// ViewPlugin.define(
+//     (view) => {
+//         return HandlePageBreakDecoration;
+//     },
+//     {
+//         //decorations⁠?: fn(value: V) → DecorationSet
+//         // ? Doesn't this plugin automatically allow for decorations anyways
+//         decorations: (viewPlugin) => {
+//             return viewPlugin.decorations;
+//         },
+//     }
+// );
 export const every250WordsPlugin = ViewPlugin.fromClass(
     HandlePageBreakDecoration,
     {
@@ -142,17 +160,36 @@ export const every250WordsPlugin = ViewPlugin.fromClass(
         },
     }
 );
+export const registeredViewTypeEffectType = StateEffect.define<string>();
 
 export const fileNameField = StateField.define<string>({
     create(state) {
         return "hey";
     },
     update(value, tr) {
+        for (const effect of tr.effects) {
+            // console.log({ effect: effect.is(communicateFileNameEffectType) });
+            if (effect.is(communicateFileNameEffectType)) {
+                _logger.traceOnce(
+                    {
+                        effectValue: effect.value,
+                        communicateFileNameEffectType,
+                    },
+                    "the Effect Type is received from dispatch",
+                    { token: NONCE2 }
+                );
+            }
+        }
         return value;
     },
 });
 
 const wordRegex = /\b\w+\b/g;
+
+// Effect -> type -> Field
+// the rhs is the Effect, the lhs is the type
+export const communicateFileNameEffectType = StateEffect.define<string>();
+_logger.trace({ communicateFileNameEffectType }, "the Effect Type is defined");
 
 export const wordField = StateField.define<string[]>({
     create(state) {
