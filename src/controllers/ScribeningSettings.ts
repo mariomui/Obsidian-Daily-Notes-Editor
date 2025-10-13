@@ -95,7 +95,7 @@ export class ScribeningSettingTab extends PluginSettingTab {
         // Display existing presets
         if (settings.preset.length === 0) {
             presetContainer.createEl("p", {
-                text: "No presets saved yet. Select a folder or tag in the Daily Notes Editor to create a preset.",
+                text: "No presets saved yet. Select a folder or tag in Scribener to create a preset.",
                 cls: "no-presets-message",
             });
         } else {

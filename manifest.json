@@ -1,6 +1,6 @@
 {
-	"id": "daily-notes-editor",
-	"name": "Daily Notes Editor",
+	"id": "scribener",
+	"name": "Scribener",
 	"version": "1.1.0",
 	"minAppVersion": "0.15.0",
 	"description": "Edit a bunch of daily notes in one page(inline), which works similar to Roam Research's default daily note view.",

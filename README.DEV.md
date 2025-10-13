@@ -42,7 +42,7 @@
 			* `pnpm dev`
 				* runs xlint which fixes any eslint mistakes automatically
 				* then builds a `manifest.json, styles.css, and main.js` to the plugin folder of your vault.
-				* 💁 If you've set up your OBSIDIAN_TEST_VAULT environment right, it should be in `[ENV]/.obsidian/plugins/dev-daily-notes-editor`
+				* 💁 If you've set up your OBSIDIAN_TEST_VAULT environment right, it should be in `[ENV]/.obsidian/plugins/[id-located-in-manifest.json]`
 		* *feature* *toggles*
 			* `process.env.SCRIBENING_REL_TEST_FOLDER` <-- when this env variable holds a folder path (relative to your vault path), the plugin will automatically open that folder up in a Scribening after hotreload reloads the vault plugin. (when in development mode)
 	* @ *Build Workflow*
