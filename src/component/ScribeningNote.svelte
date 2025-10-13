@@ -1,7 +1,11 @@
 <script lang="ts">
     // import type DailyNoteViewPlugin from "../dailyNoteViewIndex";
     import { spawnLeafView } from "@src/controllers/scribening-leaf-view";
+    import { communicateFileNameEffectType } from "@src/lib/codemirror-addons";
+    import { NONCE1 } from "@src/lib/NONCES";
     import type ScribeningViewPlugin from "@src/main";
+    import { globalLogger } from "@src/utils/createLogger/createLogger";
+
     import {
         MarkdownView,
         type TAbstractFile,
@@ -69,7 +73,7 @@
         try {
             // Use safe type checking before accessing basename
             const fileName = file instanceof TFile ? file.basename : "unknown";
-            console.log(`Loading editor for ${fileName}`);
+            globalLogger.info(`Loading editor for ${fileName}`);
 
             [createdLeaf] = spawnLeafView(plugin, editorEl, leaf);
             createdLeaf.setPinned(true);
@@ -92,6 +96,7 @@
                     },
                 },
             });
+
             createdLeaf.parentLeaf = leaf;
 
             rendered = true;
@@ -111,6 +116,28 @@
                         containerEl.style.minHeight = `${editorHeight}px`;
 
                         window.clearTimeout(timeout);
+                    }
+                    // wait until the leaf exists before yuo can dispatch
+                    const dispatch =
+                        createdLeaf.view?.["editMode"]?.["editor"]?.cm
+                            ?.dispatch;
+                    if (typeof dispatch === "function") {
+                        globalLogger.traceOnce(
+                            {
+                                communicateFileNameEffectType,
+                                psuedocodeExample: {
+                                    actionType: "effectType",
+                                    payload: fileName,
+                                },
+                            },
+                            "dispatch resembles redux action dispatch without reducer logic",
+                            { token: NONCE1 },
+                        );
+                        dispatch({
+                            effects: [
+                                communicateFileNameEffectType.of(file.name),
+                            ],
+                        });
                     }
                 }
             }, 400);
